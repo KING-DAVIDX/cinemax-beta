@@ -68,7 +68,7 @@ export async function getMovieSources(
     const res = await fetch(url, { cache: 'no-store' })
     const json: ApiResponse<{ processedSources: any[] }> = await res.json()
     if (json.status !== 'success') return []
-    return (json.data?.processedSources || []).map((s: any) => ({
+    return (json.data?.sources || []).map((s: any) => ({
       quality: s.quality || 'HD',
       url: s.url || s.directUrl || '',
       proxyUrl: s.proxyUrl || s.url || '',
