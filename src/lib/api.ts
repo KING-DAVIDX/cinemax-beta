@@ -44,9 +44,12 @@ export async function getMovieInfo(id: string): Promise<MovieItem | null> {
     const res = await fetch(`${API_BASE}/api/info/${id}`, {
       cache: 'no-store',
     })
-    const json: ApiResponse<{ subject: any }> = await res.json()
+    const json: ApiResponse<{ items: any[] }> = await res.json()
     if (json.status !== 'success') return null
-    return normalizeMovie(json.data?.subject)
+    const items: any[] = json.data?.items || []
+    if (!items.length) return null
+    const subject = items.find(i => String(i.subjectId) === String(id)) ?? items[0]
+    return normalizeMovie(subject)
   } catch {
     return null
   }
@@ -90,12 +93,10 @@ export async function getHomepage(): Promise<{
 
     const operatingList: any[] = json.data?.operatingList || []
 
-    // Banner items are in the first BANNER section
     const bannerSection = operatingList.find((s: any) => s.type === 'BANNER')
     const banner: MovieItem[] = (bannerSection?.banner?.items || [])
       .map((item: any) => normalizeMovie(item.subject || item))
 
-    // Movie/series sections are type SUBJECTS_MOVIE
     const sections = operatingList
       .filter((s: any) => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
       .map((s: any) => ({
@@ -116,7 +117,6 @@ export async function getTrending(): Promise<MovieItem[]> {
     })
     const json: ApiResponse<any> = await res.json()
     if (json.status !== 'success') return []
-    // trending endpoint returns data.subjectList (confirmed from live response)
     const items = json.data?.subjectList || json.data?.subjects || json.data?.items || json.data || []
     return Array.isArray(items) ? items.map(normalizeMovie) : []
   } catch {
@@ -127,8 +127,6 @@ export async function getTrending(): Promise<MovieItem[]> {
 function normalizeMovie(item: any): MovieItem {
   if (!item) return { id: '', title: 'Unknown' }
 
-  // FIX: item.id is always "0" from the API — use subjectId.
-  // Also guard against the literal number 0 falling through to item.id.
   const rawId = item.subjectId || item.subject_id
   const id = rawId
     ? String(rawId)
@@ -138,10 +136,7 @@ function normalizeMovie(item: any): MovieItem {
 
   return {
     id,
-
     title: item.title || item.name || item.originalTitle || 'Untitled',
-
-    // poster lives at item.cover.url
     poster:
       item.cover?.url ||
       item.poster ||
@@ -149,29 +144,21 @@ function normalizeMovie(item: any): MovieItem {
       item.image ||
       item.thumbnail ||
       '',
-
     year:
       item.year ||
       item.releaseYear ||
       (item.releaseDate ? new Date(item.releaseDate).getFullYear() : undefined),
-
-    // rating is a string at item.imdbRatingValue
     rating:
       parseFloat(item.imdbRatingValue) ||
       item.rating ||
       item.score ||
       item.imdbScore ||
       0,
-
-    // subjectType: 1 = movie, 2 = series
     type:
       item.subjectType === 2 || item.type === 'series' || item.episodeCount
         ? 'series'
         : 'movie',
-
     description: item.description || item.plot || item.introduction || '',
-
-    // genre can be a comma-separated string e.g. "Action,Crime,Drama"
     genres: item.genre
       ? String(item.genre)
           .split(',')
@@ -180,9 +167,7 @@ function normalizeMovie(item: any): MovieItem {
       : Array.isArray(item.genres)
         ? item.genres.map((g: any) => g.name || g)
         : [],
-
     duration: item.duration ? Math.round(item.duration / 60) : item.runtime || 0,
-
     cast: Array.isArray(item.staffList)
       ? item.staffList.map((a: any) => a.name || a)
       : Array.isArray(item.actors)
