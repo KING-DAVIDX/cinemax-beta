@@ -29,7 +29,7 @@ export interface ApiResponse<T> {
 export async function searchMovies(query: string): Promise<MovieItem[]> {
   try {
     const res = await fetch(`${API_BASE}/api/search/${encodeURIComponent(query)}`, {
-      next: { revalidate: 300 }
+      cache: 'no-store'                          // FIX 6: was next:{revalidate:300} which causes 304s
     })
     const json: ApiResponse<{ items: any[] }> = await res.json()
     if (json.status !== 'success') return []
@@ -42,7 +42,7 @@ export async function searchMovies(query: string): Promise<MovieItem[]> {
 export async function getMovieInfo(id: string): Promise<MovieItem | null> {
   try {
     const res = await fetch(`${API_BASE}/api/info/${id}`, {
-      next: { revalidate: 600 }
+      cache: 'no-store'                          // FIX 6: was next:{revalidate:600}
     })
     const json: ApiResponse<{ subject: any }> = await res.json()
     if (json.status !== 'success') return null
@@ -62,7 +62,7 @@ export async function getMovieSources(
     if (season !== undefined && episode !== undefined) {
       url += `?season=${season}&episode=${episode}`
     }
-    const res = await fetch(url)
+    const res = await fetch(url, { cache: 'no-store' })
     const json: ApiResponse<{ processedSources: any[] }> = await res.json()
     if (json.status !== 'success') return []
     return (json.data?.processedSources || []).map((s: any) => ({
@@ -77,24 +77,43 @@ export async function getMovieSources(
   }
 }
 
-export async function getHomepage(): Promise<MovieItem[]> {
+export async function getHomepage(): Promise<{
+  banner: MovieItem[]
+  sections: { title: string; items: MovieItem[] }[]
+}> {
   try {
     const res = await fetch(`${API_BASE}/api/homepage`, {
-      next: { revalidate: 300 }
+      cache: 'no-store'                          // FIX 6: was next:{revalidate:300}
     })
-    const json: ApiResponse<any> = await res.json()
-    if (json.status !== 'success') return []
-    const items = json.data?.items || json.data?.featured || json.data || []
-    return Array.isArray(items) ? items.map(normalizeMovie) : []
+    const json: ApiResponse<{ operatingList: any[] }> = await res.json()
+    if (json.status !== 'success') return { banner: [], sections: [] }
+
+    const operatingList: any[] = json.data?.operatingList || []
+
+    // FIX 2: API shape is data.operatingList, not data.items / data.featured
+    // Banner items are in the first BANNER section
+    const bannerSection = operatingList.find((s: any) => s.type === 'BANNER')
+    const banner: MovieItem[] = (bannerSection?.banner?.items || [])
+      .map((item: any) => normalizeMovie(item.subject || item))
+
+    // Movie/series sections are type SUBJECTS_MOVIE
+    const sections = operatingList
+      .filter((s: any) => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
+      .map((s: any) => ({
+        title: s.title || '',
+        items: s.subjects.map(normalizeMovie),
+      }))
+
+    return { banner, sections }
   } catch {
-    return []
+    return { banner: [], sections: [] }
   }
 }
 
 export async function getTrending(): Promise<MovieItem[]> {
   try {
     const res = await fetch(`${API_BASE}/api/trending`, {
-      next: { revalidate: 300 }
+      cache: 'no-store'                          // FIX 6: was next:{revalidate:300}
     })
     const json: ApiResponse<any> = await res.json()
     if (json.status !== 'success') return []
@@ -108,15 +127,37 @@ export async function getTrending(): Promise<MovieItem[]> {
 function normalizeMovie(item: any): MovieItem {
   if (!item) return { id: '', title: 'Unknown' }
   return {
-    id: String(item.id || item.movieId || item._id || ''),
+    // FIX 1: API uses subjectId, not id (item.id is always "0")
+    id: String(item.subjectId || item.subject_id || item.id || ''),
+
     title: item.title || item.name || item.originalTitle || 'Untitled',
-    poster: item.poster || item.coverVerticalUrl || item.image || item.thumbnail || '',
+
+    // FIX 3: poster is at item.cover.url, not item.poster / item.coverVerticalUrl
+    poster: item.cover?.url || item.poster || item.coverVerticalUrl || item.image || item.thumbnail || '',
+
     year: item.year || item.releaseYear || (item.releaseDate ? new Date(item.releaseDate).getFullYear() : undefined),
-    rating: item.rating || item.score || item.imdbScore || 0,
-    type: item.type === 1 || item.type === 'series' || item.episodeCount ? 'series' : 'movie',
+
+    // FIX 5: rating is at item.imdbRatingValue (a string), not item.rating / item.score
+    rating: parseFloat(item.imdbRatingValue) || item.rating || item.score || item.imdbScore || 0,
+
+    // FIX 4: API uses subjectType 1=movie, 2=series (not item.type)
+    type: item.subjectType === 2 || item.type === 'series' || item.episodeCount ? 'series' : 'movie',
+
     description: item.description || item.plot || item.introduction || '',
-    genres: Array.isArray(item.genres) ? item.genres.map((g: any) => g.name || g) : [],
-    duration: item.duration || item.runtime || 0,
-    cast: Array.isArray(item.actors) ? item.actors.map((a: any) => a.name || a) : [],
+
+    // API returns genre as a comma-separated string e.g. "Action,Crime,Drama"
+    genres: item.genre
+      ? String(item.genre).split(',').map((g: string) => g.trim()).filter(Boolean)
+      : Array.isArray(item.genres)
+        ? item.genres.map((g: any) => g.name || g)
+        : [],
+
+    duration: item.duration ? Math.round(item.duration / 60) : (item.runtime || 0),
+
+    cast: Array.isArray(item.staffList)
+      ? item.staffList.map((a: any) => a.name || a)
+      : Array.isArray(item.actors)
+        ? item.actors.map((a: any) => a.name || a)
+        : [],
   }
 }
