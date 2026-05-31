@@ -4,16 +4,21 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Star, Clock, Calendar, Download, Play, Tv,
-  Film, ChevronDown, Check
+  Film, Check
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
-import { getMovieInfo, getMovieSources, type MovieItem, type Source } from '@/lib/api'
+import {
+  getMovieInfo, getSeriesInfo, getMovieSources,
+  type MovieItem, type Source, type SeasonInfo
+} from '@/lib/api'
 import { useWatchHistory, useDownloadHistory } from '@/hooks/useHistory'
 
 export default function MoviePage() {
   const params = useParams()
   const id = params.id as string
   const [movie, setMovie] = useState<MovieItem | null>(null)
+  const [seasons, setSeasons] = useState<SeasonInfo[]>([])
+  const [detailPath, setDetailPath] = useState<string | undefined>()
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [sourcesLoading, setSourcesLoading] = useState(false)
@@ -27,12 +32,33 @@ export default function MoviePage() {
 
   useEffect(() => {
     async function load() {
-      const info = await getMovieInfo(id)
-      setMovie(info)
+      // For series, getSeriesInfo() hits /sources which returns accurate
+      // season+episode counts AND movie metadata in one call.
+      // Fall back to getMovieInfo() for movies or if series call fails.
+      const seriesInfo = await getSeriesInfo(id)
+      if (seriesInfo && seriesInfo.seasons.length > 0) {
+        setMovie(seriesInfo.movieInfo)
+        setSeasons(seriesInfo.seasons)
+        setDetailPath(seriesInfo.detailPath)
+      } else {
+        const info = await getMovieInfo(id)
+        setMovie(info)
+      }
       setLoading(false)
     }
     load()
   }, [id])
+
+  // When season changes, reset episode to 1 (avoid out-of-range episode)
+  function handleSeasonChange(s: number) {
+    setSeason(s)
+    setEpisode(1)
+    setShowSources(false)
+  }
+
+  // Episode count for the currently selected season
+  const currentSeasonInfo = seasons.find(s => s.season === season)
+  const episodeCount = currentSeasonInfo?.episodeCount ?? 1
 
   async function loadSources() {
     if (!movie) return
@@ -41,12 +67,12 @@ export default function MoviePage() {
     const s = await getMovieSources(
       id,
       movie.type === 'series' ? season : undefined,
-      movie.type === 'series' ? episode : undefined
+      movie.type === 'series' ? episode : undefined,
+      detailPath
     )
     setSources(s)
     setSourcesLoading(false)
 
-    // Add to watch history
     addToHistory({
       id,
       title: movie.title,
@@ -61,6 +87,7 @@ export default function MoviePage() {
 
   function handleDownload(source: Source) {
     if (!movie) return
+    // Always use proxyUrl — direct CDN links 403 without it
     const url = source.proxyUrl || source.url
     const a = document.createElement('a')
     a.href = url
@@ -167,6 +194,12 @@ export default function MoviePage() {
                 {movie.type === 'series' ? <Tv size={11} /> : <Film size={11} />}
                 {movie.type === 'series' ? 'TV SERIES' : 'MOVIE'}
               </span>
+              {/* Season/episode summary badge */}
+              {seasons.length > 0 && (
+                <span className="px-2 py-1 rounded bg-cx-navy border border-cx-muted/30 text-white/40 text-xs font-body">
+                  {seasons.length} Season{seasons.length !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
 
             <h1 className="font-display text-4xl md:text-6xl text-white mb-4 leading-none">
@@ -224,18 +257,20 @@ export default function MoviePage() {
               </p>
             )}
 
-            {/* TV Controls */}
-            {movie.type === 'series' && (
+            {/* TV Controls — season/episode counts from API */}
+            {movie.type === 'series' && seasons.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-5">
                 <div className="flex items-center gap-2 bg-cx-navy border border-cx-muted/50 rounded-lg px-3 py-2">
                   <span className="text-white/50 text-xs font-body">Season</span>
                   <select
                     value={season}
-                    onChange={e => { setSeason(Number(e.target.value)); setShowSources(false) }}
+                    onChange={e => handleSeasonChange(Number(e.target.value))}
                     className="bg-transparent text-white text-sm font-body focus:outline-none"
                   >
-                    {Array.from({ length: 20 }, (_, i) => i + 1).map(s => (
-                      <option key={s} value={s} className="bg-cx-dark">{s}</option>
+                    {seasons.map(s => (
+                      <option key={s.season} value={s.season} className="bg-cx-dark">
+                        {s.season}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -246,8 +281,8 @@ export default function MoviePage() {
                     onChange={e => { setEpisode(Number(e.target.value)); setShowSources(false) }}
                     className="bg-transparent text-white text-sm font-body focus:outline-none"
                   >
-                    {Array.from({ length: 50 }, (_, i) => i + 1).map(e => (
-                      <option key={e} value={e} className="bg-cx-dark">{e}</option>
+                    {Array.from({ length: episodeCount }, (_, i) => i + 1).map(ep => (
+                      <option key={ep} value={ep} className="bg-cx-dark">{ep}</option>
                     ))}
                   </select>
                 </div>
