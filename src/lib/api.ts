@@ -66,7 +66,7 @@ export async function getMovieSources(
       url += `?season=${season}&episode=${episode}`
     }
     const res = await fetch(url, { cache: 'no-store' })
-    const json: ApiResponse<{ processedSources: any[] }> = await res.json()
+    const json: ApiResponse<{ sources: any[] }> = await res.json()
     if (json.status !== 'success') return []
     return (json.data?.sources || []).map((s: any) => ({
       quality: s.quality || 'HD',
