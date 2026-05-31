@@ -11,6 +11,8 @@ export interface MovieItem {
   genres?: string[]
   duration?: number
   cast?: string[]
+  seasonCount?: number
+  episodeCount?: number
 }
 
 export interface Source {
@@ -44,11 +46,11 @@ export async function getMovieInfo(id: string): Promise<MovieItem | null> {
     const res = await fetch(`${API_BASE}/api/info/${id}`, {
       cache: 'no-store',
     })
-    const json: ApiResponse<{ items: any[] }> = await res.json()
+    const json = await res.json()
     if (json.status !== 'success') return null
-    const items: any[] = json.data?.items || []
-    if (!items.length) return null
-    const subject = items.find(i => String(i.subjectId) === String(id)) ?? items[0]
+    const data = json.data
+    if (!data) return null
+    const subject = data.subject ?? data
     return normalizeMovie(subject)
   } catch {
     return null
@@ -68,13 +70,19 @@ export async function getMovieSources(
     const res = await fetch(url, { cache: 'no-store' })
     const json: ApiResponse<{ sources: any[] }> = await res.json()
     if (json.status !== 'success') return []
-    return (json.data?.sources || []).map((s: any) => ({
-      quality: s.quality || 'HD',
-      url: s.url || s.directUrl || '',
-      proxyUrl: s.proxyUrl || s.url || '',
-      size: s.size || '',
-      format: s.format || 'mp4',
-    }))
+    return (json.data?.sources || []).map((s: any) => {
+      const directUrl = s.directUrl || s.url || ''
+      const proxyUrl = directUrl
+        ? `${API_BASE}/api/download-proxy/${encodeURIComponent(directUrl)}`
+        : ''
+      return {
+        quality: s.quality || s.resolution || 'HD',
+        url: directUrl,
+        proxyUrl,
+        size: s.size || '',
+        format: s.format || 'mp4',
+      }
+    })
   } catch {
     return []
   }
@@ -173,5 +181,7 @@ function normalizeMovie(item: any): MovieItem {
       : Array.isArray(item.actors)
         ? item.actors.map((a: any) => a.name || a)
         : [],
+    seasonCount: item.seasonCount ?? item.seasons ?? item.totalSeasons ?? undefined,
+    episodeCount: item.episodeCount ?? item.episodes ?? item.totalEpisodes ?? undefined,
   }
 }
