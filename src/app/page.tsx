@@ -9,7 +9,8 @@ import { getHomepage, getTrending, type MovieItem } from '@/lib/api'
 
 export default function HomePage() {
   const [showIntro, setShowIntro] = useState(true)
-  const [homeMovies, setHomeMovies] = useState<MovieItem[]>([])
+  const [sections, setSections] = useState<{ title: string; items: MovieItem[] }[]>([])
+  const [banner, setBanner] = useState<MovieItem[]>([])
   const [trending, setTrending] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
   const [hero, setHero] = useState<MovieItem | null>(null)
@@ -17,10 +18,16 @@ export default function HomePage() {
   useEffect(() => {
     async function load() {
       const [home, trend] = await Promise.all([getHomepage(), getTrending()])
-      setHomeMovies(home)
+
+      // getHomepage now returns { banner, sections } — not a flat MovieItem[]
+      setBanner(home.banner)
+      setSections(home.sections)
       setTrending(trend)
-      const all = [...trend, ...home].filter(m => m.poster)
-      if (all.length) setHero(all[Math.floor(Math.random() * Math.min(5, all.length))])
+
+      // Pick a random hero from banner first, fall back to trending
+      const heroPool = [...home.banner, ...trend].filter(m => m.poster)
+      if (heroPool.length) setHero(heroPool[Math.floor(Math.random() * Math.min(5, heroPool.length))])
+
       setLoading(false)
     }
     load()
@@ -29,6 +36,9 @@ export default function HomePage() {
   if (showIntro) {
     return <IntroScreen onComplete={() => setShowIntro(false)} />
   }
+
+  // Flatten all sections into one list for the FEATURED block
+  const allHomeMovies = sections.flatMap(s => s.items)
 
   return (
     <div className="min-h-screen bg-cx-black">
@@ -132,8 +142,23 @@ export default function HomePage() {
         />
       </section>
 
-      {/* HOMEPAGE / FEATURED */}
-      {!loading && homeMovies.length > 0 && (
+      {/* HOMEPAGE SECTIONS — render each named section separately */}
+      {!loading && sections.map((section, i) => (
+        <section key={i} className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={20} className="text-cx-accent" />
+              <h2 className="font-display text-2xl text-white tracking-widest">
+                {section.title.toUpperCase()}
+              </h2>
+            </div>
+          </div>
+          <MovieGrid movies={section.items.slice(0, 18)} emptyMessage="No content." />
+        </section>
+      ))}
+
+      {/* Fallback FEATURED block — shown if sections is empty but allHomeMovies has data */}
+      {!loading && sections.length === 0 && allHomeMovies.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 py-6 pb-16">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
@@ -141,14 +166,14 @@ export default function HomePage() {
               <h2 className="font-display text-2xl text-white tracking-widest">FEATURED</h2>
             </div>
           </div>
-          <MovieGrid movies={homeMovies.slice(0, 18)} emptyMessage="No featured content." />
+          <MovieGrid movies={allHomeMovies.slice(0, 18)} emptyMessage="No featured content." />
         </section>
       )}
 
       {/* Footer */}
-      <footer className="border-t border-cx-muted/30 py-8 text-center">
+      <footer className="border-t border-cx-muted/30 py-8 pb-16 text-center">
         <p className="text-white/30 font-body text-xs tracking-widest">
-          © 2025 CINEMAX · All rights reserved
+          © 2026 CINEMAX · All rights reserved
         </p>
       </footer>
     </div>
