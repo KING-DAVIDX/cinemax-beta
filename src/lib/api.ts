@@ -116,8 +116,8 @@ export async function getTrending(): Promise<MovieItem[]> {
     })
     const json: ApiResponse<any> = await res.json()
     if (json.status !== 'success') return []
-    // FIX: trending endpoint returns data.subjects, not data.items
-    const items = json.data?.subjects || json.data?.items || json.data || []
+    // trending endpoint returns data.subjectList (confirmed from live response)
+    const items = json.data?.subjectList || json.data?.subjects || json.data?.items || json.data || []
     return Array.isArray(items) ? items.map(normalizeMovie) : []
   } catch {
     return []
