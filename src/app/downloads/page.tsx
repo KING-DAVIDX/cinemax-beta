@@ -212,11 +212,3 @@ export default function DownloadsPage() {
     </div>
   )
 }
-
-// Need to import this for type usage in component
-const qualityColor: Record<string, string> = {
-  '1080p': 'text-green-400 border-green-500/30 bg-green-500/10',
-  '720p': 'text-blue-400 border-blue-500/30 bg-blue-500/10',
-  '480p': 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
-  '360p': 'text-orange-400 border-orange-500/30 bg-orange-500/10',
-}
