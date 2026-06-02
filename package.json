@@ -9,10 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@shellhaki/sparkdb-sdk": "^1.0.1",
+    "lucide-react": "^0.383.0",
     "next": "latest",
     "react": "^18",
-    "react-dom": "^18",
-    "lucide-react": "^0.383.0"
+    "react-dom": "^18"
   },
   "devDependencies": {
     "@types/node": "^20",

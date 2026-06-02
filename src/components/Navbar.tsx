@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass } from 'lucide-react'
+import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass, LogIn } from 'lucide-react'
+import { useAuth, userInitial } from '@/hooks/useAuth'
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
@@ -15,6 +16,7 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [query, setQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -84,6 +86,31 @@ export default function Navbar() {
           </div>
         </form>
 
+        <div className="hidden md:flex shrink-0 items-center">
+          {user ? (
+            <Link
+              href="/profile"
+              aria-label="Profile"
+              title="Profile"
+              className={`grid h-9 w-9 place-items-center rounded-full border text-sm font-bold transition-all ${
+                pathname === '/profile'
+                  ? 'border-cx-accent bg-cx-accent text-cx-black'
+                  : 'border-cx-accent/35 bg-cx-accent/10 text-cx-accent hover:bg-cx-accent hover:text-cx-black'
+              }`}
+            >
+              {userInitial(user)}
+            </Link>
+          ) : (
+            <Link
+              href="/signin"
+              className="flex items-center gap-2 rounded-lg border border-cx-accent/25 bg-cx-accent/10 px-3 py-2 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
+            >
+              <LogIn size={15} />
+              Sign In
+            </Link>
+          )}
+        </div>
+
         {/* Mobile menu button */}
         <button
           className="md:hidden text-white/70 hover:text-white p-1"
@@ -123,6 +150,31 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          {user ? (
+            <Link
+              href="/profile"
+              onClick={() => setMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-body font-medium transition-all ${
+                pathname === '/profile'
+                  ? 'bg-cx-accent/10 text-cx-accent border border-cx-accent/20'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-cx-accent text-xs font-bold text-cx-black">
+                {userInitial(user)}
+              </span>
+              Profile
+            </Link>
+          ) : (
+            <Link
+              href="/signin"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 rounded-lg border border-cx-accent/20 bg-cx-accent/10 px-4 py-3 text-sm font-body font-medium text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
+            >
+              <LogIn size={17} />
+              Sign In
+            </Link>
+          )}
         </div>
       )}
     </nav>
