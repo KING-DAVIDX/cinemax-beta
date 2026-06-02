@@ -41,8 +41,8 @@ function formatRelativeTime(ts: number) {
 export default function ProfilePage() {
   const router = useRouter()
   const { user, loading, setUser } = useAuth()
-  const { history } = useWatchHistory()
-  const { downloads } = useDownloadHistory()
+  const { history, clearHistory } = useWatchHistory()
+  const { downloads, clearDownloads } = useDownloadHistory()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
@@ -91,6 +91,8 @@ export default function ProfilePage() {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Unable to delete account.')
 
+      clearHistory()
+      clearDownloads()
       setUser(null)
       router.push('/signup')
       router.refresh()
