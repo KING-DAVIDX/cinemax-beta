@@ -45,8 +45,8 @@ export default function SearchClient() {
       <div className="pt-24 pb-16 max-w-7xl mx-auto px-4">
         {/* Search bar */}
         <div className="mb-10">
-          <h1 className="font-display text-4xl text-white tracking-widest mb-6">
-            SEARCH
+          <h1 className="font-display text-4xl text-white mb-6">
+            Search
           </h1>
           <form onSubmit={handleSubmit} className="flex gap-3 max-w-xl">
             <div className="relative flex-1">
@@ -59,13 +59,13 @@ export default function SearchClient() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search for movies, TV series..."
-                className="w-full bg-cx-navy border border-cx-muted/60 text-white placeholder-white/30 rounded-xl pl-12 pr-4 py-4 font-body text-sm focus:border-cx-accent/60 focus:bg-cx-navy transition-all"
+                className="w-full bg-cx-navy border border-cx-muted/60 text-white placeholder-white/30 rounded-lg pl-12 pr-4 py-4 font-body text-sm focus:border-cx-accent/60 focus:bg-cx-navy transition-all"
                 autoFocus
               />
             </div>
             <button
               type="submit"
-              className="bg-cx-accent hover:bg-cx-bright px-6 py-4 rounded-xl text-white font-body font-semibold text-sm tracking-wider transition-all hover:shadow-[0_0_20px_rgba(41,121,255,0.4)] flex items-center gap-2"
+              className="bg-cx-accent hover:bg-cx-bright px-6 py-4 rounded-lg text-cx-black font-body font-semibold text-sm transition-all flex items-center gap-2"
             >
               {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
               Search

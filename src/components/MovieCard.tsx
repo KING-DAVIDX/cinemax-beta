@@ -1,15 +1,15 @@
 'use client'
 import Link from 'next/link'
 import { Star, Tv, Film } from 'lucide-react'
-import type { MovieItem } from '@/lib/api'
+import { buildMovieHref, type MovieItem } from '@/lib/api'
 
 export default function MovieCard({ movie, index = 0 }: { movie: MovieItem; index?: number }) {
   const delay = Math.min(index * 50, 400)
 
   return (
     <Link
-      href={`/movie/${movie.id}`}
-      className="movie-card group block relative rounded-xl overflow-hidden bg-cx-navy border border-cx-muted/30 cursor-pointer"
+      href={buildMovieHref(movie)}
+      className="movie-card group block relative rounded-lg overflow-hidden bg-cx-navy border border-cx-muted/35 cursor-pointer"
       style={{
         animationDelay: `${delay}ms`,
       }}
@@ -40,10 +40,10 @@ export default function MovieCard({ movie, index = 0 }: { movie: MovieItem; inde
         {/* Type badge */}
         <div className="absolute top-2 left-2">
           <span
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-body font-semibold tracking-wider ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-body font-semibold ${
               movie.type === 'series'
-                ? 'bg-cx-blue/80 text-cx-ice'
-                : 'bg-black/60 text-white/80'
+                ? 'bg-cx-accent/20 text-cx-accent border border-cx-accent/25'
+                : 'bg-black/65 text-white/75 border border-white/10'
             }`}
           >
             {movie.type === 'series' ? <Tv size={10} /> : <Film size={10} />}
@@ -63,7 +63,7 @@ export default function MovieCard({ movie, index = 0 }: { movie: MovieItem; inde
 
         {/* Hover play hint */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="w-12 h-12 rounded-full bg-cx-accent/90 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-cx-accent/90 flex items-center justify-center shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
             <div className="w-0 h-0 border-t-[8px] border-b-[8px] border-l-[14px] border-t-transparent border-b-transparent border-l-white ml-1" />
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function MovieCard({ movie, index = 0 }: { movie: MovieItem; inde
 // Skeleton loader
 export function MovieCardSkeleton() {
   return (
-    <div className="rounded-xl overflow-hidden bg-cx-navy border border-cx-muted/30">
+    <div className="rounded-lg overflow-hidden bg-cx-navy border border-cx-muted/30">
       <div className="aspect-[2/3] skeleton" />
       <div className="p-3 space-y-2">
         <div className="h-4 skeleton rounded w-4/5" />

@@ -23,10 +23,10 @@ export default function TrendingPage() {
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
-            <Flame size={28} className="text-orange-400" />
-            <h1 className="font-display text-5xl text-white tracking-widest">TRENDING</h1>
+            <Flame size={28} className="text-cx-accent" />
+            <h1 className="font-display text-5xl text-white">Trending</h1>
           </div>
-          <p className="text-white/40 font-body text-sm tracking-wider">
+          <p className="text-white/40 font-body text-sm">
             What everyone's watching right now
           </p>
           <div className="w-24 h-px bg-gradient-to-r from-cx-accent to-transparent mt-4" />
@@ -41,9 +41,7 @@ export default function TrendingPage() {
       </div>
 
       <footer className="border-t border-cx-muted/30 py-8 text-center">
-        <p className="text-white/30 font-body text-xs tracking-widest">
-          © 2025 CINEMAX
-        </p>
+        <p className="text-white/30 font-body text-xs">CINEMAX 2026</p>
       </footer>
     </div>
   )

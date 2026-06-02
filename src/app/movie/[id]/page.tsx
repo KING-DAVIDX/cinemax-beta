@@ -1,25 +1,49 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft, Star, Clock, Calendar, Download, Play, Tv,
-  Film, Check
+  ArrowLeft,
+  Calendar,
+  Captions,
+  Check,
+  Clock,
+  Download,
+  ExternalLink,
+  Film,
+  Languages,
+  Play,
+  Star,
+  Tv,
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import MovieGrid from '@/components/MovieGrid'
 import {
-  getMovieInfo, getSeriesInfo, getMovieSources,
-  type MovieItem, type Source, type SeasonInfo
+  buildWatchHref,
+  getMovieInfo,
+  getMovieSourceResult,
+  getRecommendations,
+  getSeriesInfo,
+  type Caption,
+  type MovieItem,
+  type SeasonInfo,
+  type Source,
 } from '@/lib/api'
-import { useWatchHistory, useDownloadHistory } from '@/hooks/useHistory'
+import { useDownloadHistory, useWatchHistory } from '@/hooks/useHistory'
 
 export default function MoviePage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const id = params.id as string
+  const initialDetailPath = searchParams.get('detailPath') || undefined
+  const titleHint = searchParams.get('title') || undefined
+
   const [movie, setMovie] = useState<MovieItem | null>(null)
   const [seasons, setSeasons] = useState<SeasonInfo[]>([])
   const [detailPath, setDetailPath] = useState<string | undefined>()
   const [sources, setSources] = useState<Source[]>([])
+  const [captions, setCaptions] = useState<Caption[]>([])
+  const [recommendations, setRecommendations] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
   const [sourcesLoading, setSourcesLoading] = useState(false)
   const [season, setSeason] = useState(1)
@@ -31,46 +55,75 @@ export default function MoviePage() {
   const { addDownload } = useDownloadHistory()
 
   useEffect(() => {
+    let cancelled = false
+
     async function load() {
-      // For series, getSeriesInfo() hits /sources which returns accurate
-      // season+episode counts AND movie metadata in one call.
-      // Fall back to getMovieInfo() for movies or if series call fails.
-      const seriesInfo = await getSeriesInfo(id)
-      if (seriesInfo && seriesInfo.seasons.length > 0) {
+      setLoading(true)
+      setSources([])
+      setCaptions([])
+      setShowSources(false)
+
+      const seriesInfo = await getSeriesInfo(id, initialDetailPath, titleHint)
+      if (cancelled) return
+
+      if (seriesInfo) {
         setMovie(seriesInfo.movieInfo)
         setSeasons(seriesInfo.seasons)
-        setDetailPath(seriesInfo.detailPath)
+        setDetailPath(seriesInfo.detailPath || seriesInfo.movieInfo.detailPath || initialDetailPath)
       } else {
-        const info = await getMovieInfo(id)
+        const info = await getMovieInfo(id, initialDetailPath, titleHint)
+        if (cancelled) return
         setMovie(info)
+        setSeasons([])
+        setDetailPath(info?.detailPath || initialDetailPath)
       }
-      setLoading(false)
-    }
-    load()
-  }, [id])
 
-  // When season changes, reset episode to 1 (avoid out-of-range episode)
-  function handleSeasonChange(s: number) {
-    setSeason(s)
+      const recs = await getRecommendations(id)
+      if (!cancelled) {
+        setRecommendations(recs)
+        setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [id, initialDetailPath, titleHint])
+
+  function handleSeasonChange(nextSeason: number) {
+    setSeason(nextSeason)
     setEpisode(1)
     setShowSources(false)
   }
 
-  // Episode count for the currently selected season
-  const currentSeasonInfo = seasons.find(s => s.season === season)
+  const currentSeasonInfo = seasons.find((item) => item.season === season)
   const episodeCount = currentSeasonInfo?.episodeCount ?? 1
+  const resolvedDetailPath = detailPath || movie?.detailPath
+  const watchHref = movie
+    ? buildWatchHref(
+        { ...movie, detailPath: resolvedDetailPath },
+        movie.type === 'series' ? season : undefined,
+        movie.type === 'series' ? episode : undefined
+      )
+    : '#'
 
   async function loadSources() {
     if (!movie) return
+
     setSourcesLoading(true)
     setShowSources(true)
-    const s = await getMovieSources(
+
+    const result = await getMovieSourceResult(
       id,
       movie.type === 'series' ? season : undefined,
       movie.type === 'series' ? episode : undefined,
-      detailPath
+      resolvedDetailPath,
+      movie.title
     )
-    setSources(s)
+
+    setSources(result.sources)
+    setCaptions(result.captions)
     setSourcesLoading(false)
 
     addToHistory({
@@ -82,18 +135,19 @@ export default function MoviePage() {
       episode: movie.type === 'series' ? episode : undefined,
       year: movie.year,
       rating: movie.rating,
+      detailPath: resolvedDetailPath,
     })
   }
 
   function handleDownload(source: Source) {
     if (!movie) return
-    // Always use proxyUrl — direct CDN links 403 without it
-    const url = source.proxyUrl || source.url
-    const a = document.createElement('a')
-    a.href = url
-    a.target = '_blank'
-    a.rel = 'noopener noreferrer'
-    a.click()
+
+    const url = source.downloadUrl || source.streamUrl || source.url
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.target = '_blank'
+    anchor.rel = 'noopener noreferrer'
+    anchor.click()
 
     const ts = Date.now()
     setDownloadedAt(ts)
@@ -107,6 +161,7 @@ export default function MoviePage() {
       episode: movie.type === 'series' ? episode : undefined,
       size: source.size,
       year: movie.year,
+      detailPath: resolvedDetailPath,
     })
   }
 
@@ -114,16 +169,16 @@ export default function MoviePage() {
     return (
       <div className="min-h-screen bg-cx-black">
         <Navbar />
-        <div className="pt-24 max-w-7xl mx-auto px-4">
+        <div className="mx-auto max-w-7xl px-4 pt-24">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 w-32 skeleton rounded" />
+            <div className="h-8 w-32 rounded-lg skeleton" />
             <div className="flex gap-8">
-              <div className="w-64 aspect-[2/3] skeleton rounded-xl shrink-0" />
+              <div className="w-64 shrink-0 rounded-lg skeleton aspect-[2/3]" />
               <div className="flex-1 space-y-4 pt-4">
-                <div className="h-10 skeleton rounded w-3/4" />
-                <div className="h-4 skeleton rounded w-1/2" />
-                <div className="h-4 skeleton rounded w-full" />
-                <div className="h-4 skeleton rounded w-5/6" />
+                <div className="h-10 w-3/4 rounded-lg skeleton" />
+                <div className="h-4 w-1/2 rounded-lg skeleton" />
+                <div className="h-4 w-full rounded-lg skeleton" />
+                <div className="h-4 w-5/6 rounded-lg skeleton" />
               </div>
             </div>
           </div>
@@ -134,12 +189,14 @@ export default function MoviePage() {
 
   if (!movie) {
     return (
-      <div className="min-h-screen bg-cx-black flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-cx-black">
         <Navbar />
         <div className="text-center">
-          <p className="text-6xl mb-4">🎬</p>
-          <p className="text-white/50 font-body text-xl">Movie not found.</p>
-          <Link href="/" className="text-cx-accent mt-4 inline-block hover:underline">Go Home</Link>
+          <Film size={54} className="mx-auto mb-4 text-cx-muted" />
+          <p className="font-body text-xl text-white/55">Title not found.</p>
+          <Link href="/" className="mt-4 inline-block text-cx-accent hover:underline">
+            Go Home
+          </Link>
         </div>
       </div>
     )
@@ -149,213 +206,243 @@ export default function MoviePage() {
     <div className="min-h-screen bg-cx-black">
       <Navbar />
 
-      {/* Backdrop */}
       {movie.poster && (
-        <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="pointer-events-none fixed inset-0 z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={movie.poster}
-            alt=""
-            className="w-full h-full object-cover opacity-10 blur-xl scale-110"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-cx-black/60 via-cx-black/80 to-cx-black" />
+          <img src={movie.poster} alt="" className="h-full w-full scale-110 object-cover opacity-10 blur-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-cx-black/55 via-cx-black/86 to-cx-black" />
         </div>
       )}
 
-      <div className="relative z-10 pt-20 pb-16 max-w-7xl mx-auto px-4">
-        {/* Back */}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 pb-16 pt-20">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-white/50 hover:text-white font-body text-sm mb-8 transition-colors"
+          className="mb-8 inline-flex items-center gap-2 text-sm text-white/50 transition-colors hover:text-white"
         >
           <ArrowLeft size={16} /> Back
         </Link>
 
-        <div className="flex flex-col md:flex-row gap-8 mb-10">
-          {/* Poster */}
-          <div className="shrink-0 w-48 md:w-64 mx-auto md:mx-0">
-            <div className="rounded-xl overflow-hidden border border-cx-muted/40 shadow-2xl shadow-cx-accent/10 animate-glow-pulse">
+        <div className="mb-10 flex flex-col gap-8 md:flex-row">
+          <div className="mx-auto w-48 shrink-0 md:mx-0 md:w-64">
+            <div className="overflow-hidden rounded-lg border border-cx-muted/45 shadow-2xl shadow-black/35">
               {movie.poster ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={movie.poster} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+                <img src={movie.poster} alt={movie.title} className="w-full object-cover aspect-[2/3]" />
               ) : (
-                <div className="w-full aspect-[2/3] bg-cx-navy flex items-center justify-center">
+                <div className="flex w-full items-center justify-center bg-cx-navy aspect-[2/3]">
                   <Film size={48} className="text-cx-muted" />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Info */}
           <div className="flex-1 animate-fade-up">
-            {/* Type badge */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-cx-blue/20 border border-cx-blue/30 text-cx-ice text-xs font-body tracking-wider">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 rounded border border-cx-accent/25 bg-cx-accent/10 px-2 py-1 text-xs text-cx-accent">
                 {movie.type === 'series' ? <Tv size={11} /> : <Film size={11} />}
-                {movie.type === 'series' ? 'TV SERIES' : 'MOVIE'}
+                {movie.type === 'series' ? 'Series' : 'Movie'}
               </span>
-              {/* Season/episode summary badge */}
               {seasons.length > 0 && (
-                <span className="px-2 py-1 rounded bg-cx-navy border border-cx-muted/30 text-white/40 text-xs font-body">
+                <span className="rounded border border-cx-muted/35 bg-cx-navy px-2 py-1 text-xs text-white/45">
                   {seasons.length} Season{seasons.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
 
-            <h1 className="font-display text-4xl md:text-6xl text-white mb-4 leading-none">
+            <h1 className="mb-4 max-w-4xl font-display text-4xl leading-tight text-white md:text-6xl">
               {movie.title}
             </h1>
 
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-4 mb-5 text-sm font-body text-white/50">
+            <div className="mb-5 flex flex-wrap items-center gap-4 text-sm text-white/55">
               {movie.rating && movie.rating > 0 && (
-                <span className="flex items-center gap-1 text-yellow-400">
-                  <Star size={13} className="fill-yellow-400" />
+                <span className="flex items-center gap-1 text-cx-accent">
+                  <Star size={14} className="fill-cx-accent" />
                   {typeof movie.rating === 'number' ? movie.rating.toFixed(1) : movie.rating}
                 </span>
               )}
               {movie.year && (
                 <span className="flex items-center gap-1">
-                  <Calendar size={13} />
+                  <Calendar size={14} />
                   {movie.year}
                 </span>
               )}
               {movie.duration && movie.duration > 0 && (
                 <span className="flex items-center gap-1">
-                  <Clock size={13} />
+                  <Clock size={14} />
                   {movie.duration} min
                 </span>
               )}
             </div>
 
-            {/* Genres */}
             {movie.genres && movie.genres.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-5">
-                {movie.genres.map(g => (
+              <div className="mb-5 flex flex-wrap gap-2">
+                {movie.genres.map((genre) => (
                   <span
-                    key={g}
-                    className="px-3 py-1 rounded-full bg-cx-navy border border-cx-muted/40 text-cx-ice/70 text-xs font-body"
+                    key={genre}
+                    className="rounded border border-cx-muted/45 bg-cx-navy px-3 py-1 text-xs text-white/60"
                   >
-                    {g}
+                    {genre}
                   </span>
                 ))}
               </div>
             )}
 
-            {/* Description */}
             {movie.description && (
-              <p className="text-white/60 font-body text-sm leading-relaxed mb-6 max-w-2xl">
-                {movie.description}
-              </p>
+              <p className="mb-6 max-w-2xl text-sm leading-7 text-white/62">{movie.description}</p>
             )}
 
-            {/* Cast */}
             {movie.cast && movie.cast.length > 0 && (
-              <p className="text-white/40 font-body text-xs mb-6">
-                <span className="text-white/60">Cast: </span>
-                {movie.cast.slice(0, 5).join(', ')}
+              <p className="mb-6 text-xs text-white/42">
+                <span className="text-white/62">Cast: </span>
+                {movie.cast.slice(0, 6).join(', ')}
               </p>
             )}
 
-            {/* TV Controls — season/episode counts from API */}
             {movie.type === 'series' && seasons.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-5">
-                <div className="flex items-center gap-2 bg-cx-navy border border-cx-muted/50 rounded-lg px-3 py-2">
-                  <span className="text-white/50 text-xs font-body">Season</span>
+              <div className="mb-5 flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 rounded-lg border border-cx-muted/50 bg-cx-navy px-3 py-2">
+                  <span className="text-xs text-white/50">Season</span>
                   <select
                     value={season}
-                    onChange={e => handleSeasonChange(Number(e.target.value))}
-                    className="bg-transparent text-white text-sm font-body focus:outline-none"
+                    onChange={(event) => handleSeasonChange(Number(event.target.value))}
+                    className="bg-transparent text-sm text-white focus:outline-none"
                   >
-                    {seasons.map(s => (
-                      <option key={s.season} value={s.season} className="bg-cx-dark">
-                        {s.season}
+                    {seasons.map((item) => (
+                      <option key={item.season} value={item.season} className="bg-cx-dark">
+                        {item.season}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div className="flex items-center gap-2 bg-cx-navy border border-cx-muted/50 rounded-lg px-3 py-2">
-                  <span className="text-white/50 text-xs font-body">Episode</span>
+                <div className="flex items-center gap-2 rounded-lg border border-cx-muted/50 bg-cx-navy px-3 py-2">
+                  <span className="text-xs text-white/50">Episode</span>
                   <select
                     value={episode}
-                    onChange={e => { setEpisode(Number(e.target.value)); setShowSources(false) }}
-                    className="bg-transparent text-white text-sm font-body focus:outline-none"
+                    onChange={(event) => {
+                      setEpisode(Number(event.target.value))
+                      setShowSources(false)
+                    }}
+                    className="bg-transparent text-sm text-white focus:outline-none"
                   >
-                    {Array.from({ length: episodeCount }, (_, i) => i + 1).map(ep => (
-                      <option key={ep} value={ep} className="bg-cx-dark">{ep}</option>
+                    {Array.from({ length: episodeCount }, (_, index) => index + 1).map((item) => (
+                      <option key={item} value={item} className="bg-cx-dark">
+                        {item}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="flex flex-wrap gap-3">
+              <Link
+                href={watchHref}
+                className="flex items-center gap-2 rounded-lg bg-cx-accent px-6 py-3 text-sm font-semibold text-cx-black transition-all hover:bg-cx-bright"
+              >
+                <Play size={15} className="fill-cx-black" />
+                Stream
+              </Link>
               <button
                 onClick={loadSources}
-                className="flex items-center gap-2 bg-cx-accent hover:bg-cx-bright px-6 py-3 rounded-lg text-white font-body font-semibold text-sm tracking-wider transition-all hover:shadow-[0_0_20px_rgba(41,121,255,0.5)]"
+                className="flex items-center gap-2 rounded-lg border border-cx-accent/35 bg-cx-accent/10 px-6 py-3 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
               >
-                <Play size={15} className="fill-white" />
-                {movie.type === 'series' ? `Get S${season}E${episode}` : 'Get Links'}
+                <Download size={15} />
+                Downloads
               </button>
             </div>
           </div>
         </div>
 
-        {/* Sources Panel */}
         {showSources && (
-          <div className="bg-cx-navy/80 backdrop-blur border border-cx-muted/40 rounded-xl p-6 mb-8 animate-fade-up">
-            <h3 className="font-display text-xl text-white tracking-widest mb-4 flex items-center gap-2">
+          <div className="mb-8 rounded-lg border border-cx-muted/45 bg-cx-navy/82 p-6 backdrop-blur animate-fade-up">
+            <h3 className="mb-4 flex items-center gap-2 font-display text-xl text-white">
               <Download size={18} className="text-cx-accent" />
-              {movie.type === 'series' ? `S${season}E${episode} — ` : ''}Download Links
+              {movie.type === 'series' ? `S${season}E${episode} - ` : ''}Download Links
             </h3>
 
             {sourcesLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="h-14 skeleton rounded-lg" />
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-14 rounded-lg skeleton" />
                 ))}
               </div>
             ) : sources.length === 0 ? (
-              <p className="text-white/40 font-body text-sm">
-                No download sources found for this title.
-              </p>
+              <p className="text-sm text-white/42">No download sources found for this title.</p>
             ) : (
               <div className="space-y-3">
-                {sources.map((s, i) => (
+                {sources.map((source, index) => (
                   <div
-                    key={i}
-                    className="flex items-center justify-between bg-cx-dark/60 border border-cx-muted/30 rounded-lg px-4 py-3 hover:border-cx-accent/30 transition-all group"
+                    key={`${source.quality}-${index}`}
+                    className="flex flex-col gap-3 rounded-lg border border-cx-muted/35 bg-cx-dark/70 px-4 py-3 transition-all hover:border-cx-accent/35 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-4">
-                      <span className="font-display text-lg text-cx-accent tracking-widest">
-                        {s.quality}
-                      </span>
-                      {s.size && (
-                        <span className="text-white/40 text-xs font-body">{s.size}</span>
-                      )}
-                      {s.format && (
-                        <span className="text-cx-ice/40 text-xs font-body uppercase">{s.format}</span>
-                      )}
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span className="font-display text-lg text-cx-accent">{source.quality}</span>
+                      {source.size && <span className="text-xs text-white/42">{source.size}</span>}
+                      {source.format && <span className="text-xs uppercase text-white/35">{source.format}</span>}
+                      {source.filename && <span className="max-w-sm truncate text-xs text-white/35">{source.filename}</span>}
                     </div>
-                    <button
-                      onClick={() => handleDownload(s)}
-                      className="flex items-center gap-2 bg-cx-accent/10 hover:bg-cx-accent border border-cx-accent/30 hover:border-cx-accent px-4 py-2 rounded-lg text-cx-accent hover:text-white font-body font-semibold text-sm transition-all"
-                    >
-                      <Download size={13} />
-                      Download
-                    </button>
+                    <div className="flex gap-2">
+                      <Link
+                        href={watchHref}
+                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition-all hover:border-cx-accent/35 hover:text-cx-accent"
+                      >
+                        <Play size={13} />
+                        Stream
+                      </Link>
+                      <button
+                        onClick={() => handleDownload(source)}
+                        className="flex items-center gap-2 rounded-lg border border-cx-accent/30 bg-cx-accent/10 px-4 py-2 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
+                      >
+                        <Download size={13} />
+                        Download
+                      </button>
+                    </div>
                   </div>
                 ))}
+
                 {downloadedAt && (
-                  <div className="flex items-center gap-2 text-green-400 text-xs font-body mt-2">
+                  <div className="mt-2 flex items-center gap-2 text-xs text-green-400">
                     <Check size={13} />
                     Saved to download history
                   </div>
                 )}
               </div>
             )}
+
+            {!sourcesLoading && captions.length > 0 && (
+              <div className="mt-6 border-t border-cx-muted/40 pt-5">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white/80">
+                  <Languages size={15} className="text-cx-accent" />
+                  Subtitles
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {captions.map((caption, index) => (
+                    <a
+                      key={`${caption.language}-${index}`}
+                      href={caption.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-cx-muted/45 bg-cx-dark px-3 py-2 text-xs text-white/62 transition-colors hover:border-cx-accent/40 hover:text-cx-accent"
+                    >
+                      <Captions size={13} />
+                      {caption.language}
+                      <ExternalLink size={12} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        )}
+
+        {recommendations.length > 0 && (
+          <section className="pt-4">
+            <div className="mb-6 flex items-center gap-2">
+              <Film size={18} className="text-cx-accent" />
+              <h2 className="font-display text-2xl text-white">More Like This</h2>
+            </div>
+            <MovieGrid movies={recommendations} emptyMessage="No recommendations found." />
+          </section>
         )}
       </div>
     </div>

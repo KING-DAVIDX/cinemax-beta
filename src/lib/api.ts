@@ -1,4 +1,4 @@
-const API_BASE = 'https://xer-movie-api.vercel.app'
+const API_BASE = (process.env.NEXT_PUBLIC_XER_MOVIE_API_BASE || 'https://xer-movie-api.vercel.app').replace(/\/$/, '')
 
 export interface MovieItem {
   id: string
@@ -11,6 +11,7 @@ export interface MovieItem {
   genres?: string[]
   duration?: number
   cast?: string[]
+  detailPath?: string
 }
 
 export interface SeasonInfo {
@@ -22,10 +23,26 @@ export interface SeasonInfo {
 export interface Source {
   quality: string
   url: string
-  /** Always use this for downloads — direct CDN links require the proxy */
-  proxyUrl: string
+  downloadUrl: string
+  streamUrl?: string
+  directUrl?: string
+  proxyUrl?: string
   size?: string
   format?: string
+  filename?: string
+}
+
+export interface Caption {
+  language: string
+  url: string
+  format?: string
+}
+
+export interface SourceResult {
+  sources: Source[]
+  captions: Caption[]
+  limited: boolean
+  hasResource: boolean
 }
 
 export interface SeriesInfo {
@@ -39,180 +56,255 @@ export interface SeriesInfo {
 export interface ApiResponse<T> {
   status: string
   data: T
+  message?: string
+  error?: string
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+type ApiParam = string | number | boolean | undefined | null
 
-function buildProxyUrl(directUrl: string): string {
-  if (!directUrl) return ''
-  return `${API_BASE}/api/download-proxy/${encodeURIComponent(directUrl)}`
+export interface BrowseFilters {
+  channelId?: number
+  classify?: string
+  country?: string
+  genre?: string
+  page?: number
+  perPage?: number
+  sort?: string
+  year?: string
 }
 
-// ─── Search ─────────────────────────────────────────────────────────────────
+export const BROWSE_GENRES = [
+  'All',
+  'Action',
+  'Adventure',
+  'Animation',
+  'Comedy',
+  'Crime',
+  'Documentary',
+  'Drama',
+  'Family',
+  'Fantasy',
+  'Horror',
+  'Mystery',
+  'Romance',
+  'Sci-Fi',
+  'Thriller',
+]
+
+export const BROWSE_YEARS = ['All', '2026', '2025', '2024', '2023', '2022', '2021', '2020', '2010s', '2000s']
+
+export const BROWSE_SORTS = [
+  { label: 'For You', value: 'ForYou' },
+  { label: 'Latest', value: 'Latest' },
+  { label: 'Popular', value: 'Popular' },
+]
+
+function apiUrl(path: string, params?: Record<string, ApiParam>): string {
+  const url = new URL(`${API_BASE}${path}`)
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value))
+    }
+  })
+
+  return url.toString()
+}
+
+async function fetchApi<T>(url: string): Promise<ApiResponse<T> | null> {
+  const res = await fetch(url, { cache: 'no-store' })
+  const json = (await res.json().catch(() => null)) as ApiResponse<T> | null
+
+  if (!res.ok || json?.status !== 'success') return null
+  return json
+}
+
+export function buildMovieHref(movie: Pick<MovieItem, 'id' | 'title' | 'detailPath'>): string {
+  const params = new URLSearchParams()
+
+  if (movie.detailPath) params.set('detailPath', movie.detailPath)
+  if (movie.title) params.set('title', movie.title)
+
+  const qs = params.toString()
+  return qs ? `/movie/${encodeURIComponent(movie.id)}?${qs}` : `/movie/${encodeURIComponent(movie.id)}`
+}
+
+export function buildWatchHref(
+  movie: Pick<MovieItem, 'id' | 'title' | 'detailPath' | 'type'>,
+  season?: number,
+  episode?: number
+): string {
+  const params = new URLSearchParams()
+
+  if (movie.detailPath) params.set('detailPath', movie.detailPath)
+  if (movie.title) params.set('title', movie.title)
+  if (movie.type) params.set('type', movie.type)
+  if (season !== undefined) params.set('season', String(season))
+  if (episode !== undefined) params.set('episode', String(episode))
+
+  const qs = params.toString()
+  return qs ? `/watch/${encodeURIComponent(movie.id)}?${qs}` : `/watch/${encodeURIComponent(movie.id)}`
+}
 
 export async function searchMovies(query: string): Promise<MovieItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/search/${encodeURIComponent(query)}`, {
-      cache: 'no-store',
-    })
-    const json: ApiResponse<{ items: any[] }> = await res.json()
-    if (json.status !== 'success') return []
-    return (json.data?.items || []).map(normalizeMovie)
+    const json = await fetchApi<{ items?: any[] }>(
+      apiUrl(`/api/search/${encodeURIComponent(query)}`)
+    )
+
+    return (json?.data?.items || []).map(normalizeMovie).filter(hasMovieId)
   } catch {
     return []
   }
 }
 
-// ─── Info (basic metadata only, no season data) ─────────────────────────────
-
-export async function getMovieInfo(id: string): Promise<MovieItem | null> {
+export async function getMovieInfo(
+  id: string,
+  detailPath?: string,
+  title?: string
+): Promise<MovieItem | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/info/${id}`, {
-      cache: 'no-store',
-    })
-    const json: ApiResponse<{ items: any[] }> = await res.json()
-    if (json.status !== 'success') return null
-    const items: any[] = json.data?.items || []
-    if (!items.length) return null
-    const subject = items.find(i => String(i.subjectId) === String(id)) ?? items[0]
-    return normalizeMovie(subject)
+    const json = await fetchApi<any>(
+      apiUrl(`/api/info/${encodeURIComponent(id)}`, { detailPath, title })
+    )
+
+    if (!json?.data) return null
+    return normalizeDetailPayload(json.data, detailPath)
   } catch {
     return null
   }
 }
 
-// ─── Series info: accurate seasons + episode counts via /sources ─────────────
-
-/**
- * Fetches season/episode structure from the sources endpoint.
- * Uses data.movieInfo.resource.seasons[] for accurate counts.
- * Falls back to getMovieInfo() for movies or on failure.
- */
-export async function getSeriesInfo(id: string): Promise<SeriesInfo | null> {
+export async function getSeriesInfo(
+  id: string,
+  detailPath?: string,
+  title?: string
+): Promise<SeriesInfo | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/sources/${id}`, { cache: 'no-store' })
-    const json: ApiResponse<{ movieInfo: any; sources: any[] }> = await res.json()
-    if (json.status !== 'success') return null
+    const json = await fetchApi<any>(
+      apiUrl(`/api/info/${encodeURIComponent(id)}`, { detailPath, title })
+    )
 
-    const raw = json.data?.movieInfo
+    if (!json?.data) return null
+
+    const raw = json.data
     const subject = raw?.subject ?? raw
-    const resource = raw?.resource
+    const resource = raw?.resource ?? subject?.resource
+    const movieInfo = normalizeDetailPayload(raw, detailPath)
+    const seasons: SeasonInfo[] = (resource?.seasons || [])
+      .map((seasonItem: any) => ({
+        season: Number(seasonItem.se ?? seasonItem.season ?? 0),
+        episodeCount: Number(seasonItem.maxEp ?? seasonItem.episodeCount ?? seasonItem.epNum ?? 0),
+        resolutions: seasonItem.resolutions || [],
+      }))
+      .filter((seasonItem: SeasonInfo) => seasonItem.season > 0 && seasonItem.episodeCount > 0)
 
-    const seasons: SeasonInfo[] = (resource?.seasons || []).map((s: any) => ({
-      season: s.se,
-      episodeCount: s.maxEp,
-      resolutions: s.resolutions || [],
-    }))
-
-    const totalEpisodes = seasons.reduce((sum, s) => sum + s.episodeCount, 0)
+    const totalEpisodes = seasons.reduce((sum, seasonItem) => sum + seasonItem.episodeCount, 0)
 
     return {
-      movieInfo: normalizeMovie(subject),
+      movieInfo,
       seasons,
       totalSeasons: seasons.length,
       totalEpisodes,
-      detailPath: subject?.detailPath,
+      detailPath: movieInfo.detailPath || subject?.detailPath || raw?.detailPath || detailPath,
     }
   } catch {
     return null
   }
 }
 
-// ─── Sources (streams/downloads) for a specific episode ─────────────────────
-
-/**
- * Returns sources for a movie, or a specific season+episode of a series.
- * proxyUrl is always set — use it instead of url for downloads/playback.
- */
 export async function getMovieSources(
   id: string,
   season?: number,
   episode?: number,
-  detailPath?: string
+  detailPath?: string,
+  title?: string
 ): Promise<Source[]> {
+  const result = await getMovieSourceResult(id, season, episode, detailPath, title)
+  return result.sources
+}
+
+export async function getMovieSourceResult(
+  id: string,
+  season?: number,
+  episode?: number,
+  detailPath?: string,
+  title?: string
+): Promise<SourceResult> {
   try {
-    let url = `${API_BASE}/api/sources/${id}`
-    const params = new URLSearchParams()
-    if (season !== undefined && episode !== undefined) {
-      params.set('season', String(season))
-      params.set('episode', String(episode))
+    const json = await fetchApi<{
+      sources?: any[]
+      processedSources?: any[]
+      captions?: any[]
+      limited?: boolean
+      hasResource?: boolean
+    }>(
+      apiUrl(`/api/sources/${encodeURIComponent(id)}`, {
+        season,
+        episode,
+        detailPath,
+        title,
+      })
+    )
+
+    const sources = json?.data?.sources || json?.data?.processedSources || []
+    const normalizedSources = sources
+      .map((source: any) => normalizeSource(source, { id, season, episode, detailPath, title }))
+      .filter((source: Source) => Boolean(source.downloadUrl || source.url))
+
+    return {
+      sources: normalizedSources,
+      captions: (json?.data?.captions || []).map(normalizeCaption).filter((caption) => caption.url),
+      limited: Boolean(json?.data?.limited),
+      hasResource: Boolean(json?.data?.hasResource ?? normalizedSources.length),
     }
-    if (detailPath) params.set('detailPath', detailPath)
-    const qs = params.toString()
-    if (qs) url += `?${qs}`
-
-    const res = await fetch(url, { cache: 'no-store' })
-    const json: ApiResponse<{ sources: any[] }> = await res.json()
-    if (json.status !== 'success') return []
-
-    return (json.data?.sources || []).map((s: any) => {
-      const directUrl: string = s.directUrl || s.url || ''
-      return {
-        quality: s.quality || 'HD',
-        url: directUrl,
-        // Direct CDN links 403 without the proxy — always use proxyUrl
-        proxyUrl: buildProxyUrl(directUrl),
-        size: s.size || '',
-        format: s.format || 'mp4',
-      }
-    })
   } catch {
-    return []
+    return { sources: [], captions: [], limited: false, hasResource: false }
   }
 }
 
-/**
- * Convenience: builds a direct download URL via the proxy endpoint.
- * Use this anywhere you need a one-shot download link.
- *
- * Example: <a href={getDownloadUrl(directUrl)}>Download</a>
- */
-export function getDownloadUrl(directUrl: string): string {
-  return buildProxyUrl(directUrl)
+export function getDownloadUrl(source: Source | string): string {
+  if (typeof source === 'string') return source
+  return source.downloadUrl || source.streamUrl || source.url || source.directUrl || ''
 }
 
-/**
- * Convenience: builds a download link for a whole episode via /api/download.
- * The server will resolve the best quality and stream it through.
- */
 export function getEpisodeDownloadUrl(
   id: string,
   season?: number,
   episode?: number,
-  detailPath?: string
+  detailPath?: string,
+  title?: string,
+  quality?: string
 ): string {
-  let url = `${API_BASE}/api/download/${id}`
-  const params = new URLSearchParams()
-  if (season !== undefined) params.set('season', String(season))
-  if (episode !== undefined) params.set('episode', String(episode))
-  if (detailPath) params.set('detailPath', detailPath)
-  const qs = params.toString()
-  return qs ? `${url}?${qs}` : url
+  return apiUrl(`/api/download/${encodeURIComponent(id)}`, {
+    season,
+    episode,
+    detailPath,
+    title,
+    quality,
+  })
 }
-
-// ─── Homepage & Trending ─────────────────────────────────────────────────────
 
 export async function getHomepage(): Promise<{
   banner: MovieItem[]
   sections: { title: string; items: MovieItem[] }[]
 }> {
   try {
-    const res = await fetch(`${API_BASE}/api/homepage`, { cache: 'no-store' })
-    const json: ApiResponse<{ operatingList: any[] }> = await res.json()
-    if (json.status !== 'success') return { banner: [], sections: [] }
+    const json = await fetchApi<{ operatingList?: any[] }>(apiUrl('/api/homepage'))
+    const operatingList = json?.data?.operatingList || []
 
-    const operatingList: any[] = json.data?.operatingList || []
-
-    const bannerSection = operatingList.find((s: any) => s.type === 'BANNER')
-    const banner: MovieItem[] = (bannerSection?.banner?.items || [])
+    const bannerSection = operatingList.find((section: any) => section.type === 'BANNER')
+    const banner = (bannerSection?.banner?.items || [])
       .map((item: any) => normalizeMovie(item.subject || item))
+      .filter(hasMovieId)
 
     const sections = operatingList
-      .filter((s: any) => s.type === 'SUBJECTS_MOVIE' && s.subjects?.length > 0)
-      .map((s: any) => ({
-        title: s.title || '',
-        items: s.subjects.map(normalizeMovie),
+      .filter((section: any) => section.type === 'SUBJECTS_MOVIE' && section.subjects?.length > 0)
+      .map((section: any) => ({
+        title: section.title || '',
+        items: section.subjects.map(normalizeMovie).filter(hasMovieId),
       }))
+      .filter((section: { title: string; items: MovieItem[] }) => section.items.length > 0)
 
     return { banner, sections }
   } catch {
@@ -222,66 +314,217 @@ export async function getHomepage(): Promise<{
 
 export async function getTrending(): Promise<MovieItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/trending`, { cache: 'no-store' })
-    const json: ApiResponse<any> = await res.json()
-    if (json.status !== 'success') return []
-    const items = json.data?.subjectList || json.data?.subjects || json.data?.items || json.data || []
-    return Array.isArray(items) ? items.map(normalizeMovie) : []
+    const json = await fetchApi<any>(apiUrl('/api/trending'))
+    const items = json?.data?.subjectList || json?.data?.subjects || json?.data?.items || json?.data || []
+    return Array.isArray(items) ? items.map(normalizeMovie).filter(hasMovieId) : []
   } catch {
     return []
   }
 }
 
-// ─── Normalizer ──────────────────────────────────────────────────────────────
+export async function browseMovies(filters: BrowseFilters = {}): Promise<MovieItem[]> {
+  try {
+    const json = await fetchApi<{ items?: any[]; subjects?: any[] }>(
+      apiUrl('/api/browse', {
+        channelId: filters.channelId ?? 1,
+        classify: filters.classify || 'All',
+        country: filters.country || 'All',
+        genre: filters.genre || 'All',
+        page: filters.page ?? 1,
+        perPage: filters.perPage ?? 24,
+        sort: filters.sort || 'ForYou',
+        year: filters.year || 'All',
+      })
+    )
+
+    const items = json?.data?.items || json?.data?.subjects || []
+    return items.map(normalizeMovie).filter(hasMovieId)
+  } catch {
+    return []
+  }
+}
+
+export async function getRecommendations(
+  id: string,
+  page = 1,
+  perPage = 12
+): Promise<MovieItem[]> {
+  try {
+    const json = await fetchApi<{ items?: any[] }>(
+      apiUrl(`/api/recommendations/${encodeURIComponent(id)}`, { page, perPage })
+    )
+
+    return (json?.data?.items || []).map(normalizeMovie).filter(hasMovieId)
+  } catch {
+    return []
+  }
+}
+
+function normalizeDetailPayload(payload: any, fallbackDetailPath?: string): MovieItem {
+  const subject = payload?.subject ?? payload
+  return normalizeMovie({
+    ...subject,
+    resource: payload?.resource ?? subject?.resource,
+    detailPath: subject?.detailPath || payload?.detailPath || fallbackDetailPath,
+  })
+}
+
+function normalizeSource(
+  source: any,
+  context: {
+    id: string
+    season?: number
+    episode?: number
+    detailPath?: string
+    title?: string
+  }
+): Source {
+  const quality = String(source.quality || source.resolution || 'HD')
+  const directUrl = source.directUrl || source.url || ''
+  const downloadUrl =
+    source.downloadUrl ||
+    source.streamUrl ||
+    getEpisodeDownloadUrl(
+      context.id,
+      context.season,
+      context.episode,
+      context.detailPath,
+      context.title,
+      quality
+    )
+
+  return {
+    quality,
+    url: downloadUrl,
+    downloadUrl,
+    streamUrl: source.streamUrl || downloadUrl,
+    directUrl,
+    proxyUrl: downloadUrl,
+    size: source.size || '',
+    format: source.format || 'MP4',
+    filename: source.filename,
+  }
+}
+
+function normalizeCaption(caption: any): Caption {
+  const language =
+    caption.language ||
+    caption.lang ||
+    caption.lanName ||
+    caption.label ||
+    caption.name ||
+    'Subtitle'
+
+  return {
+    language,
+    url: caption.url || caption.file || caption.src || caption.downloadUrl || '',
+    format: caption.format || caption.type || 'srt',
+  }
+}
+
+function hasMovieId(movie: MovieItem): boolean {
+  return Boolean(movie.id)
+}
 
 function normalizeMovie(item: any): MovieItem {
   if (!item) return { id: '', title: 'Unknown' }
 
-  const rawId = item.subjectId || item.subject_id
-  const id = rawId
-    ? String(rawId)
-    : item.id && item.id !== 0 && item.id !== '0'
-      ? String(item.id)
-      : ''
+  const subject = item.subject ?? item
+  const rawId = subject.subjectId ?? subject.subject_id ?? subject.id
+  const rating = parseNumber(
+    subject.imdbRatingValue ?? subject.rating ?? subject.score ?? subject.imdbScore
+  )
+  const year = normalizeYear(subject.year ?? subject.releaseYear ?? subject.releaseDate)
+  const duration = normalizeDuration(subject.duration ?? subject.runtime)
+  const genres = normalizeGenres(subject.genre ?? subject.genres ?? subject.genreList)
+  const type = inferType(subject)
 
   return {
-    id,
-    title: item.title || item.name || item.originalTitle || 'Untitled',
+    id: rawId ? String(rawId) : '',
+    title: subject.title || subject.name || subject.originalTitle || 'Untitled',
     poster:
-      item.cover?.url ||
-      item.poster ||
-      item.coverVerticalUrl ||
-      item.image ||
-      item.thumbnail ||
+      imageUrl(subject.cover) ||
+      subject.poster ||
+      subject.coverVerticalUrl ||
+      subject.thumbnail ||
+      imageUrl(subject.stills) ||
+      subject.image ||
       '',
-    year:
-      item.year ||
-      item.releaseYear ||
-      (item.releaseDate ? new Date(item.releaseDate).getFullYear() : undefined),
-    rating:
-      parseFloat(item.imdbRatingValue) ||
-      item.rating ||
-      item.score ||
-      item.imdbScore ||
-      0,
-    type:
-      item.subjectType === 2 || item.type === 'series' || item.episodeCount
-        ? 'series'
-        : 'movie',
-    description: item.description || item.plot || item.introduction || '',
-    genres: item.genre
-      ? String(item.genre)
-          .split(',')
-          .map((g: string) => g.trim())
-          .filter(Boolean)
-      : Array.isArray(item.genres)
-        ? item.genres.map((g: any) => g.name || g)
-        : [],
-    duration: item.duration ? Math.round(item.duration / 60) : item.runtime || 0,
-    cast: Array.isArray(item.staffList)
-      ? item.staffList.map((a: any) => a.name || a)
-      : Array.isArray(item.actors)
-        ? item.actors.map((a: any) => a.name || a)
-        : [],
+    year,
+    rating,
+    type,
+    description: subject.description || subject.plot || subject.introduction || '',
+    genres,
+    duration,
+    cast: normalizeCast(subject.staffList ?? subject.actors ?? subject.cast),
+    detailPath: subject.detailPath || subject.detail_path || item.detailPath || item.detail_path,
   }
+}
+
+function imageUrl(value: any): string {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  return value.url || value.src || ''
+}
+
+function parseNumber(value: any): number {
+  const parsed = Number.parseFloat(String(value ?? ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function normalizeYear(value: any): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseInt(String(value).slice(0, 4), 10)
+  return Number.isFinite(parsed) && parsed > 1800 ? parsed : undefined
+}
+
+function normalizeDuration(value: any): number {
+  const parsed = parseNumber(value)
+  if (!parsed) return 0
+  return parsed > 300 ? Math.round(parsed / 60) : Math.round(parsed)
+}
+
+function normalizeGenres(value: any): string[] {
+  if (!value) return []
+
+  if (typeof value === 'string') {
+    return value.split(',').map((genre) => genre.trim()).filter(Boolean)
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((genre) => (typeof genre === 'string' ? genre : genre?.name || genre?.title || ''))
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+function normalizeCast(value: any): string[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((person) => (typeof person === 'string' ? person : person?.name || person?.character || ''))
+    .filter(Boolean)
+}
+
+function inferType(item: any): 'movie' | 'series' {
+  const seasons = item.resource?.seasons || []
+  const hasSeriesSeason = seasons.some((season: any) => {
+    const seasonNumber = Number(season.se ?? season.season ?? 0)
+    const episodeCount = Number(season.maxEp ?? season.episodeCount ?? season.epNum ?? 0)
+    return seasonNumber > 0 && episodeCount > 0
+  })
+
+  if (
+    item.subjectType === 2 ||
+    item.type === 'series' ||
+    item.type === 'tv' ||
+    item.episodeCount ||
+    hasSeriesSeason
+  ) {
+    return 'series'
+  }
+
+  return 'movie'
 }

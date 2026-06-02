@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Download, Trash2, X, Film, Tv, ExternalLink } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import { buildMovieHref } from '@/lib/api'
 import { useDownloadHistory, type DownloadHistoryItem } from '@/hooks/useHistory'
 
 function formatRelativeTime(ts: number): string {
@@ -19,9 +20,9 @@ function formatRelativeTime(ts: number): string {
 
 const qualityColor: Record<string, string> = {
   '1080p': 'text-green-400 border-green-500/30 bg-green-500/10',
-  '720p': 'text-blue-400 border-blue-500/30 bg-blue-500/10',
-  '480p': 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
-  '360p': 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+  '720p': 'text-cx-accent border-cx-accent/30 bg-cx-accent/10',
+  '480p': 'text-cx-stone border-cx-muted/40 bg-cx-muted/10',
+  '360p': 'text-cx-taupe border-cx-muted/40 bg-cx-muted/10',
 }
 
 function DownloadCard({
@@ -32,11 +33,12 @@ function DownloadCard({
   onRemove: () => void
 }) {
   const qClass = qualityColor[item.quality] || 'text-cx-ice border-cx-accent/30 bg-cx-accent/10'
+  const href = buildMovieHref(item)
 
   return (
-    <div className="group flex gap-4 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-xl p-4 transition-all">
+    <div className="group flex gap-4 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-lg p-4 transition-all">
       {/* Poster */}
-      <Link href={`/movie/${item.id}`} className="shrink-0">
+      <Link href={href} className="shrink-0">
         <div className="w-16 h-24 rounded-lg overflow-hidden bg-cx-muted/30">
           {item.poster ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -56,12 +58,12 @@ function DownloadCard({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2 flex-wrap">
-          <Link href={`/movie/${item.id}`}>
+          <Link href={href}>
             <h3 className="text-white font-body font-semibold text-sm hover:text-cx-accent transition-colors">
               {item.title}
             </h3>
           </Link>
-          <span className={`px-2 py-0.5 rounded border text-xs font-body font-bold tracking-wider ${qClass}`}>
+          <span className={`px-2 py-0.5 rounded border text-xs font-body font-bold ${qClass}`}>
             {item.quality}
           </span>
         </div>
@@ -90,7 +92,7 @@ function DownloadCard({
             {formatRelativeTime(item.downloadedAt)}
           </span>
           <Link
-            href={`/movie/${item.id}`}
+            href={href}
             className="flex items-center gap-1 px-3 py-1.5 bg-cx-accent/10 hover:bg-cx-accent border border-cx-accent/20 hover:border-cx-accent rounded-lg text-cx-accent hover:text-white text-xs font-body font-semibold transition-all"
           >
             <ExternalLink size={11} />
@@ -129,7 +131,7 @@ export default function DownloadsPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <Download size={24} className="text-cx-accent" />
-              <h1 className="font-display text-4xl text-white tracking-widest">DOWNLOAD HISTORY</h1>
+              <h1 className="font-display text-4xl text-white">Download History</h1>
             </div>
             <p className="text-white/40 font-body text-sm">
               {downloads.length} download{downloads.length !== 1 ? 's' : ''} tracked
@@ -186,7 +188,7 @@ export default function DownloadsPage() {
         {downloads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Download size={48} className="text-cx-muted mb-4" />
-            <h3 className="text-white/60 font-display text-2xl tracking-widest mb-2">No Downloads Yet</h3>
+            <h3 className="text-white/60 font-display text-2xl mb-2">No Downloads Yet</h3>
             <p className="text-white/30 font-body text-sm mb-6">
               Every file you download will be tracked here with quality and timestamp.
             </p>

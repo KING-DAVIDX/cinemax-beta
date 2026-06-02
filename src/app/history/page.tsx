@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Clock, Trash2, X, Film, Tv, RefreshCw } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import { buildMovieHref } from '@/lib/api'
 import { useWatchHistory, type WatchHistoryItem } from '@/hooks/useHistory'
 
 function formatRelativeTime(ts: number): string {
@@ -24,10 +25,12 @@ function HistoryCard({
   item: WatchHistoryItem
   onRemove: () => void
 }) {
+  const href = buildMovieHref(item)
+
   return (
-    <div className="group flex gap-4 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-xl p-4 transition-all">
+    <div className="group flex gap-4 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-lg p-4 transition-all">
       {/* Poster */}
-      <Link href={`/movie/${item.id}`} className="shrink-0">
+      <Link href={href} className="shrink-0">
         <div className="w-16 h-24 rounded-lg overflow-hidden bg-cx-muted/30">
           {item.poster ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -46,7 +49,7 @@ function HistoryCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <Link href={`/movie/${item.id}`}>
+        <Link href={href}>
           <h3 className="text-white font-body font-semibold text-sm hover:text-cx-accent transition-colors truncate">
             {item.title}
           </h3>
@@ -72,7 +75,7 @@ function HistoryCard({
           </span>
           <div className="flex gap-2">
             <Link
-              href={`/movie/${item.id}`}
+              href={href}
               className="flex items-center gap-1 px-3 py-1.5 bg-cx-accent/10 hover:bg-cx-accent border border-cx-accent/20 hover:border-cx-accent rounded-lg text-cx-accent hover:text-white text-xs font-body font-semibold transition-all"
             >
               <RefreshCw size={11} />
@@ -106,7 +109,7 @@ export default function HistoryPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <Clock size={24} className="text-cx-accent" />
-              <h1 className="font-display text-4xl text-white tracking-widest">WATCH HISTORY</h1>
+              <h1 className="font-display text-4xl text-white">Watch History</h1>
             </div>
             <p className="text-white/40 font-body text-sm">
               {history.length} title{history.length !== 1 ? 's' : ''} watched
@@ -149,7 +152,7 @@ export default function HistoryPage() {
         {history.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Clock size={48} className="text-cx-muted mb-4" />
-            <h3 className="text-white/60 font-display text-2xl tracking-widest mb-2">No History Yet</h3>
+            <h3 className="text-white/60 font-display text-2xl mb-2">No History Yet</h3>
             <p className="text-white/30 font-body text-sm mb-6">
               Movies and series you watch will appear here.
             </p>

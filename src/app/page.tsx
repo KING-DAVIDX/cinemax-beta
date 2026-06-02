@@ -5,7 +5,7 @@ import { TrendingUp, Flame, ChevronRight, Star, Play } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import MovieGrid from '@/components/MovieGrid'
 import IntroScreen from '@/components/IntroScreen'
-import { getHomepage, getTrending, type MovieItem } from '@/lib/api'
+import { buildMovieHref, getHomepage, getTrending, type MovieItem } from '@/lib/api'
 
 export default function HomePage() {
   const [showIntro, setShowIntro] = useState(true)
@@ -60,20 +60,14 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-cx-black/80 to-transparent" />
           </>
         ) : (
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(ellipse at 30% 50%, rgba(13,71,161,0.4) 0%, transparent 70%)',
-            }}
-          />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(201,168,76,0.13)_0%,transparent_62%)]" />
         )}
 
-        {/* Grid overlay */}
+        {/* Film texture overlay */}
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-[0.08]"
           style={{
-            backgroundImage: `linear-gradient(rgba(41,121,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(41,121,255,0.3) 1px, transparent 1px)`,
-            backgroundSize: '80px 80px',
+            backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent 46px, rgba(237,232,220,0.18) 47px, transparent 48px)`,
           }}
         />
 
@@ -82,9 +76,7 @@ export default function HomePage() {
           {hero && (
             <div className="max-w-lg animate-fade-up">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-body tracking-[0.3em] text-cx-accent uppercase">
-                  Featured
-                </span>
+                <span className="editorial-label">Featured</span>
                 {hero.rating && hero.rating > 0 && (
                   <span className="flex items-center gap-1 text-xs text-yellow-400">
                     <Star size={10} className="fill-yellow-400" />
@@ -102,15 +94,15 @@ export default function HomePage() {
               )}
               <div className="flex gap-3">
                 <Link
-                  href={`/movie/${hero.id}`}
-                  className="flex items-center gap-2 bg-cx-accent hover:bg-cx-bright px-6 py-3 rounded-lg text-white font-body font-semibold text-sm tracking-wider transition-all duration-200 hover:shadow-[0_0_20px_rgba(41,121,255,0.5)]"
+                  href={buildMovieHref(hero)}
+                  className="flex items-center gap-2 bg-cx-accent hover:bg-cx-bright px-6 py-3 rounded-lg text-cx-black font-body font-semibold text-sm transition-all duration-200"
                 >
-                  <Play size={15} className="fill-white" />
+                  <Play size={15} className="fill-cx-black" />
                   Watch Now
                 </Link>
                 <Link
-                  href={`/movie/${hero.id}`}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-3 rounded-lg text-white font-body font-semibold text-sm tracking-wider transition-all duration-200 backdrop-blur-sm"
+                  href={buildMovieHref(hero)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-3 rounded-lg text-white font-body font-semibold text-sm transition-all duration-200 backdrop-blur-sm"
                 >
                   More Info
                 </Link>
@@ -124,8 +116,8 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Flame size={20} className="text-orange-400" />
-            <h2 className="font-display text-2xl text-white tracking-widest">TRENDING NOW</h2>
+            <Flame size={20} className="text-cx-accent" />
+            <h2 className="font-display text-2xl text-white">Trending Now</h2>
           </div>
           <Link
             href="/trending"
@@ -148,8 +140,8 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="font-display text-2xl text-white tracking-widest">
-                {section.title.toUpperCase()}
+              <h2 className="font-display text-2xl text-white">
+                {section.title}
               </h2>
             </div>
           </div>
@@ -163,7 +155,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="font-display text-2xl text-white tracking-widest">FEATURED</h2>
+              <h2 className="font-display text-2xl text-white">Featured</h2>
             </div>
           </div>
           <MovieGrid movies={allHomeMovies.slice(0, 18)} emptyMessage="No featured content." />
@@ -172,8 +164,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-cx-muted/30 py-8 pb-16 text-center">
-        <p className="text-white/30 font-body text-xs tracking-widest">
-          © 2026 CINEMAX · All rights reserved
+        <p className="text-white/30 font-body text-xs">
+          CINEMAX 2026
         </p>
       </footer>
     </div>

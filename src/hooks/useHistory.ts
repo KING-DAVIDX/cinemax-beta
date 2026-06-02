@@ -12,6 +12,7 @@ export interface WatchHistoryItem {
   progress?: number // percentage
   year?: number
   rating?: number
+  detailPath?: string
 }
 
 export interface DownloadHistoryItem {
@@ -25,6 +26,7 @@ export interface DownloadHistoryItem {
   downloadedAt: number
   size?: string
   year?: number
+  detailPath?: string
 }
 
 // ---- Watch History ----
