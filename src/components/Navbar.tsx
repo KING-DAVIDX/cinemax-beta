@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass, LogIn } from 'lucide-react'
+import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass, LogIn, MessageCircle, Shield } from 'lucide-react'
 import { useAuth, userInitial } from '@/hooks/useAuth'
+import { isAdminEmail, WHATSAPP_CHANNEL_URL } from '@/lib/site'
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
@@ -17,6 +18,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
+  const isAdmin = isAdminEmail(user?.email)
   const [scrolled, setScrolled] = useState(false)
   const [query, setQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -86,7 +88,31 @@ export default function Navbar() {
           </div>
         </form>
 
-        <div className="hidden md:flex shrink-0 items-center">
+        <div className="hidden md:flex shrink-0 items-center gap-2">
+          <a
+            href={WHATSAPP_CHANNEL_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Cinemax WhatsApp Channel"
+            title="Cinemax WhatsApp Channel"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-cx-muted/45 bg-white/5 text-white/58 transition-all hover:border-cx-accent/35 hover:text-cx-accent"
+          >
+            <MessageCircle size={16} />
+          </a>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Admin"
+              title="Admin"
+              className={`grid h-9 w-9 place-items-center rounded-lg border transition-all ${
+                pathname === '/admin'
+                  ? 'border-cx-accent bg-cx-accent text-cx-black'
+                  : 'border-cx-accent/30 bg-cx-accent/10 text-cx-accent hover:bg-cx-accent hover:text-cx-black'
+              }`}
+            >
+              <Shield size={16} />
+            </Link>
+          )}
           {user ? (
             <Link
               href="/profile"
@@ -150,6 +176,30 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          <a
+            href={WHATSAPP_CHANNEL_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center gap-3 rounded-lg border border-cx-muted/40 bg-white/5 px-4 py-3 text-sm font-body font-medium text-white/62 transition-all hover:border-cx-accent/35 hover:text-cx-accent"
+          >
+            <MessageCircle size={17} />
+            WhatsApp Channel
+          </a>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-body font-medium transition-all ${
+                pathname === '/admin'
+                  ? 'bg-cx-accent/10 text-cx-accent border border-cx-accent/20'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Shield size={17} />
+              Admin
+            </Link>
+          )}
           {user ? (
             <Link
               href="/profile"

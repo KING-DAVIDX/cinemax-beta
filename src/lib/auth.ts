@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { cookies } from 'next/headers'
 import type { NextResponse } from 'next/server'
 import { client } from '@shellhaki/sparkdb-sdk'
+import { isAdminEmail } from '@/lib/site'
 
 export const SESSION_COOKIE = 'cinemax_session'
 const USERS_COLLECTION = 'users'
@@ -92,6 +93,12 @@ export async function findUserById(id: string) {
     .select()
 
   return users[0] || null
+}
+
+export async function listUsers() {
+  const users = await getDb().from<StoredUser>(USERS_COLLECTION).select()
+
+  return users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
 export async function createUser(user: Omit<StoredUser, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -217,4 +224,8 @@ export async function getCurrentUser() {
   if (!session) return null
 
   return findUserById(session.uid)
+}
+
+export function isAdminUser(user?: StoredUser | PublicUser | null) {
+  return isAdminEmail(user?.email)
 }

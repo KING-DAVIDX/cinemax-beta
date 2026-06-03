@@ -12,11 +12,13 @@
     "@shellhaki/sparkdb-sdk": "^1.0.1",
     "lucide-react": "^0.383.0",
     "next": "latest",
+    "nodemailer": "^8.0.10",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",

@@ -10,6 +10,7 @@ import {
   Film,
   KeyRound,
   LogOut,
+  MessageCircle,
   Shield,
   Trash2,
   Tv,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import { buildMovieHref } from '@/lib/api'
+import { WHATSAPP_CHANNEL_URL } from '@/lib/site'
 import { userInitial, useAuth } from '@/hooks/useAuth'
 import { useDownloadHistory, useWatchHistory } from '@/hooks/useHistory'
 
@@ -269,6 +271,18 @@ export default function ProfilePage() {
                   </p>
                   <p className="text-white/72">{formatDate(user.createdAt)}</p>
                 </div>
+                <a
+                  href={WHATSAPP_CHANNEL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-cx-accent/25 bg-cx-accent/10 p-3 text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
+                >
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <MessageCircle size={15} />
+                    WhatsApp Channel
+                  </span>
+                  <span className="text-xs font-bold">Join</span>
+                </a>
               </div>
             </section>
 

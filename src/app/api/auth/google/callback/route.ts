@@ -6,6 +6,7 @@ import {
   sanitizeName,
   updateUser,
 } from '@/lib/auth'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -94,6 +95,14 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return authError(request, 'google-user')
+    }
+
+    if (!existingUser) {
+      try {
+        await sendWelcomeEmail({ email: user.email, name: user.name })
+      } catch (emailError) {
+        console.error('Unable to send welcome email:', emailError)
+      }
     }
 
     const response = NextResponse.redirect(new URL('/', request.url))

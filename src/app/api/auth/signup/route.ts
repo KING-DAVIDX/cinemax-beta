@@ -7,6 +7,7 @@ import {
   sanitizeName,
   toPublicUser,
 } from '@/lib/auth'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -43,6 +44,12 @@ export async function POST(request: Request) {
       provider: 'password',
       passwordHash: hashPassword(password),
     })
+
+    try {
+      await sendWelcomeEmail({ email: user.email, name: user.name })
+    } catch (emailError) {
+      console.error('Unable to send welcome email:', emailError)
+    }
 
     return NextResponse.json(
       {
