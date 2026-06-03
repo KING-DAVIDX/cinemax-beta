@@ -249,7 +249,7 @@ export default function MoviePage() {
               )}
             </div>
 
-            <h1 className="mb-4 max-w-4xl font-display text-4xl leading-tight text-white md:text-6xl">
+            <h1 className="mb-4 max-w-4xl break-words font-display text-3xl leading-tight text-white sm:text-4xl md:text-6xl">
               {movie.title}
             </h1>
 
@@ -379,19 +379,19 @@ export default function MoviePage() {
                       <span className="font-display text-lg text-cx-accent">{source.quality}</span>
                       {source.size && <span className="text-xs text-white/42">{source.size}</span>}
                       {source.format && <span className="text-xs uppercase text-white/35">{source.format}</span>}
-                      {source.filename && <span className="max-w-sm truncate text-xs text-white/35">{source.filename}</span>}
+                      {source.filename && <span className="max-w-full break-all text-xs text-white/35 sm:max-w-sm sm:truncate">{source.filename}</span>}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 min-[420px]:flex-row">
                       <Link
                         href={watchHref}
-                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition-all hover:border-cx-accent/35 hover:text-cx-accent"
+                        className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition-all hover:border-cx-accent/35 hover:text-cx-accent"
                       >
                         <Play size={13} />
                         Stream
                       </Link>
                       <button
                         onClick={() => handleDownload(source)}
-                        className="flex items-center gap-2 rounded-lg border border-cx-accent/30 bg-cx-accent/10 px-4 py-2 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
+                        className="flex items-center justify-center gap-2 rounded-lg border border-cx-accent/30 bg-cx-accent/10 px-4 py-2 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
                       >
                         <Download size={13} />
                         Download

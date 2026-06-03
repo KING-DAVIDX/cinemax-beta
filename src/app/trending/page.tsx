@@ -24,7 +24,7 @@ export default function TrendingPage() {
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
             <Flame size={28} className="text-cx-accent" />
-            <h1 className="font-display text-5xl text-white">Trending</h1>
+            <h1 className="font-display text-4xl text-white sm:text-5xl">Trending</h1>
           </div>
           <p className="text-white/40 font-body text-sm">
             What everyone's watching right now

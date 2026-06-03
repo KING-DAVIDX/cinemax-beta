@@ -29,6 +29,17 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (query.trim()) {
@@ -40,17 +51,17 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
+        menuOpen || scrolled
           ? 'bg-cx-dark/95 backdrop-blur-md border-b border-cx-muted/50 py-3'
           : 'bg-cx-black/45 backdrop-blur-sm py-5'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 flex items-center justify-between gap-3 sm:gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Film className="text-cx-accent" size={22} />
           <span
-            className="font-display text-2xl text-white"
+            className="font-display text-xl text-white sm:text-2xl"
           >
             CINEMAX
           </span>
@@ -139,7 +150,10 @@ export default function Navbar() {
 
         {/* Mobile menu button */}
         <button
-          className="md:hidden text-white/70 hover:text-white p-1"
+          type="button"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          className="md:hidden grid h-10 w-10 place-items-center rounded-lg border border-cx-muted/45 bg-cx-navy text-white/75 transition-all hover:border-cx-accent/35 hover:text-white"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -148,7 +162,9 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-cx-dark/98 backdrop-blur-lg border-b border-cx-muted/50 px-4 py-4 flex flex-col gap-3">
+        <div className="md:hidden fixed inset-x-0 top-[65px] max-h-[calc(100dvh-65px)] overflow-y-auto border-b border-cx-muted/60 bg-cx-dark px-4 pb-6 pt-4 shadow-2xl shadow-black/70">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,0.12),transparent_35%),linear-gradient(180deg,#1A1814_0%,#111009_100%)]" />
+          <div className="flex flex-col gap-3">
           <form onSubmit={handleSearch} className="flex">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cx-ice/40" size={15} />
@@ -225,6 +241,7 @@ export default function Navbar() {
               Sign In
             </Link>
           )}
+          </div>
         </div>
       )}
     </nav>

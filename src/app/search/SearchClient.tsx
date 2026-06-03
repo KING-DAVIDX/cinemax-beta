@@ -48,7 +48,7 @@ export default function SearchClient() {
           <h1 className="font-display text-4xl text-white mb-6">
             Search
           </h1>
-          <form onSubmit={handleSubmit} className="flex gap-3 max-w-xl">
+          <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-cx-ice/40"
@@ -65,7 +65,7 @@ export default function SearchClient() {
             </div>
             <button
               type="submit"
-              className="bg-cx-accent hover:bg-cx-bright px-6 py-4 rounded-lg text-cx-black font-body font-semibold text-sm transition-all flex items-center gap-2"
+              className="flex items-center justify-center gap-2 rounded-lg bg-cx-accent px-6 py-4 font-body text-sm font-semibold text-cx-black transition-all hover:bg-cx-bright sm:w-auto"
             >
               {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
               Search

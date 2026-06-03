@@ -45,7 +45,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* HERO */}
-      <section className="relative h-[70vh] min-h-[500px] flex items-end overflow-hidden">
+      <section className="relative flex min-h-[560px] items-end overflow-hidden sm:h-[70vh] sm:min-h-[500px]">
         {/* Background */}
         {hero?.poster ? (
           <>
@@ -72,7 +72,7 @@ export default function HomePage() {
         />
 
         {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 pb-12 w-full">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-10 sm:pb-12">
           {hero && (
             <div className="max-w-lg animate-fade-up">
               <div className="flex items-center gap-2 mb-3">
@@ -84,7 +84,7 @@ export default function HomePage() {
                   </span>
                 )}
               </div>
-              <h1 className="font-display text-5xl md:text-7xl text-white mb-4 leading-none glow-text">
+              <h1 className="mb-4 break-words font-display text-4xl leading-tight text-white glow-text sm:text-5xl md:text-7xl md:leading-none">
                 {hero.title}
               </h1>
               {hero.description && (
@@ -92,17 +92,17 @@ export default function HomePage() {
                   {hero.description}
                 </p>
               )}
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 min-[420px]:flex-row">
                 <Link
                   href={buildMovieHref(hero)}
-                  className="flex items-center gap-2 bg-cx-accent hover:bg-cx-bright px-6 py-3 rounded-lg text-cx-black font-body font-semibold text-sm transition-all duration-200"
+                  className="flex items-center justify-center gap-2 bg-cx-accent hover:bg-cx-bright px-6 py-3 rounded-lg text-cx-black font-body font-semibold text-sm transition-all duration-200"
                 >
                   <Play size={15} className="fill-cx-black" />
                   Watch Now
                 </Link>
                 <Link
                   href={buildMovieHref(hero)}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-3 rounded-lg text-white font-body font-semibold text-sm transition-all duration-200 backdrop-blur-sm"
+                  className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-3 rounded-lg text-white font-body font-semibold text-sm transition-all duration-200 backdrop-blur-sm"
                 >
                   More Info
                 </Link>
@@ -114,10 +114,10 @@ export default function HomePage() {
 
       {/* TRENDING */}
       <section className="max-w-7xl mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
             <Flame size={20} className="text-cx-accent" />
-            <h2 className="font-display text-2xl text-white">Trending Now</h2>
+            <h2 className="font-display text-xl text-white sm:text-2xl">Trending Now</h2>
           </div>
           <Link
             href="/trending"
@@ -137,10 +137,10 @@ export default function HomePage() {
       {/* HOMEPAGE SECTIONS — render each named section separately */}
       {!loading && sections.map((section, i) => (
         <section key={i} className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="font-display text-2xl text-white">
+              <h2 className="break-words font-display text-xl text-white sm:text-2xl">
                 {section.title}
               </h2>
             </div>
@@ -152,10 +152,10 @@ export default function HomePage() {
       {/* Fallback FEATURED block — shown if sections is empty but allHomeMovies has data */}
       {!loading && sections.length === 0 && allHomeMovies.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 py-6 pb-16">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="font-display text-2xl text-white">Featured</h2>
+              <h2 className="font-display text-xl text-white sm:text-2xl">Featured</h2>
             </div>
           </div>
           <MovieGrid movies={allHomeMovies.slice(0, 18)} emptyMessage="No featured content." />

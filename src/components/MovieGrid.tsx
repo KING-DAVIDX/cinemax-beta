@@ -16,7 +16,7 @@ export default function MovieGrid({
 }: MovieGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 gap-3 min-[420px]:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <MovieCardSkeleton key={i} />
         ))}
@@ -34,7 +34,7 @@ export default function MovieGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 gap-3 min-[420px]:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       {movies.map((movie, i) => (
         <MovieCard key={`${movie.id}-${i}`} movie={movie} index={i} />
       ))}

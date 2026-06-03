@@ -36,7 +36,7 @@ function DownloadCard({
   const href = buildMovieHref(item)
 
   return (
-    <div className="group flex gap-4 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-lg p-4 transition-all">
+    <div className="group flex gap-3 bg-cx-navy/60 hover:bg-cx-navy border border-cx-muted/30 hover:border-cx-muted/60 rounded-lg p-3 transition-all sm:gap-4 sm:p-4">
       {/* Poster */}
       <Link href={href} className="shrink-0">
         <div className="w-16 h-24 rounded-lg overflow-hidden bg-cx-muted/30">
@@ -86,7 +86,7 @@ function DownloadCard({
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-3">
+        <div className="mt-3 flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
           <span className="flex items-center gap-1 text-xs text-white/30 font-body">
             <Download size={10} />
             {formatRelativeTime(item.downloadedAt)}
@@ -127,11 +127,11 @@ export default function DownloadsPage() {
       <Navbar />
       <div className="pt-24 pb-16 max-w-5xl mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <Download size={24} className="text-cx-accent" />
-              <h1 className="font-display text-4xl text-white">Download History</h1>
+              <h1 className="font-display text-3xl text-white sm:text-4xl">Download History</h1>
             </div>
             <p className="text-white/40 font-body text-sm">
               {downloads.length} download{downloads.length !== 1 ? 's' : ''} tracked
@@ -141,7 +141,7 @@ export default function DownloadsPage() {
           {downloads.length > 0 && (
             <div>
               {confirmClear ? (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-white/50 text-xs font-body">Clear all?</span>
                   <button
                     onClick={() => { clearDownloads(); setConfirmClear(false) }}

@@ -77,7 +77,7 @@ export default function BrowsePage() {
             <p className="editorial-label mb-3">Catalogue</p>
             <div className="flex items-center gap-3">
               <Compass size={26} className="text-cx-accent" />
-              <h1 className="font-display text-4xl text-white md:text-5xl">Browse Cinemax</h1>
+              <h1 className="font-display text-3xl text-white sm:text-4xl md:text-5xl">Browse Cinemax</h1>
             </div>
             <p className="mt-3 max-w-xl text-sm leading-6 text-white/52">
               Filter the library by format, genre, year, and editorial ordering.
