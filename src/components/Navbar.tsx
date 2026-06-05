@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass, LogIn, MessageCircle, Shield } from 'lucide-react'
+import { Search, Film, TrendingUp, Clock, Download, Home, X, Menu, Compass, LogIn, MessageCircle, Shield, Bookmark } from 'lucide-react'
 import { useAuth, userInitial } from '@/hooks/useAuth'
 import { isAdminEmail, WHATSAPP_CHANNEL_URL } from '@/lib/site'
 
@@ -11,6 +11,7 @@ const navLinks = [
   { href: '/browse', label: 'Browse', icon: Compass },
   { href: '/trending', label: 'Trending', icon: TrendingUp },
   { href: '/history', label: 'History', icon: Clock },
+  { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
   { href: '/downloads', label: 'Downloads', icon: Download },
 ]
 
