@@ -93,15 +93,6 @@ export default function WatchPage() {
   const backHref = movie ? buildMovieHref({ ...movie, detailPath: detailPath || movie.detailPath }) : '/'
   const streamUrl = selectedSource?.streamUrl || selectedSource?.downloadUrl || selectedSource?.url
 
-  function handleDownload() {
-    if (!selectedSource) return
-    const anchor = document.createElement('a')
-    anchor.href = selectedSource.downloadUrl || selectedSource.url
-    anchor.target = '_blank'
-    anchor.rel = 'noopener noreferrer'
-    anchor.click()
-  }
-
   return (
     <div className="min-h-screen bg-cx-black">
       <Navbar />
@@ -192,13 +183,16 @@ export default function WatchPage() {
               </div>
 
               {selectedSource && (
-                <button
-                  onClick={handleDownload}
+                <a
+                  href={selectedSource.downloadUrl || selectedSource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={selectedSource.filename || undefined}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-cx-accent/35 bg-cx-accent/10 px-4 py-3 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
                 >
                   <Download size={15} />
                   Download Selected
-                </button>
+                </a>
               )}
 
               {captions.length > 0 && (

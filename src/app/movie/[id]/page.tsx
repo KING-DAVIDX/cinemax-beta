@@ -139,15 +139,8 @@ export default function MoviePage() {
     })
   }
 
-  function handleDownload(source: Source) {
+  function recordDownload(source: Source) {
     if (!movie) return
-
-    const url = source.downloadUrl || source.streamUrl || source.url
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.target = '_blank'
-    anchor.rel = 'noopener noreferrer'
-    anchor.click()
 
     const ts = Date.now()
     setDownloadedAt(ts)
@@ -389,13 +382,17 @@ export default function MoviePage() {
                         <Play size={13} />
                         Stream
                       </Link>
-                      <button
-                        onClick={() => handleDownload(source)}
+                      <a
+                        href={source.downloadUrl || source.streamUrl || source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={source.filename || undefined}
+                        onClick={() => recordDownload(source)}
                         className="flex items-center justify-center gap-2 rounded-lg border border-cx-accent/30 bg-cx-accent/10 px-4 py-2 text-sm font-semibold text-cx-accent transition-all hover:bg-cx-accent hover:text-cx-black"
                       >
                         <Download size={13} />
                         Download
-                      </button>
+                      </a>
                     </div>
                   </div>
                 ))}
