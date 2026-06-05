@@ -88,6 +88,7 @@ export default function WatchPage() {
   const [resumeSeconds, setResumeSeconds] = useState(0)
   const [hasAppliedResume, setHasAppliedResume] = useState(false)
   const [progress, setProgress] = useState({ current: 0, duration: 0 })
+  const [qualityResumeSeconds, setQualityResumeSeconds] = useState(0)
 
   const { addToHistory } = useWatchHistory()
   const { user, loading: authLoading } = useAuth()
@@ -209,7 +210,7 @@ export default function WatchPage() {
 
   useEffect(() => {
     setHasAppliedResume(false)
-  }, [resumeSeconds, sources])
+  }, [resumeSeconds, qualityResumeSeconds, sources])
 
   const selectedSource = useMemo(
     () => sources.find((source) => source.quality === selectedQuality) || sources[0],
@@ -290,9 +291,28 @@ export default function WatchPage() {
   )
 
   function applyResume(video: HTMLVideoElement) {
-    if (hasAppliedResume || resumeSeconds <= 0 || !Number.isFinite(video.duration)) return
-    video.currentTime = Math.min(resumeSeconds, Math.max(video.duration - 1, 0))
+    const nextResumeSeconds = qualityResumeSeconds || resumeSeconds
+    if (hasAppliedResume || nextResumeSeconds <= 0 || !Number.isFinite(video.duration)) return
+    video.currentTime = Math.min(nextResumeSeconds, Math.max(video.duration - 1, 0))
+    if (qualityResumeSeconds) setQualityResumeSeconds(0)
     setHasAppliedResume(true)
+  }
+
+  function handleQualityChange(quality: string) {
+    const video = videoRef.current
+    if (video) {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      const current = video.currentTime || progress.current || 0
+
+      if (current > 0) {
+        setQualityResumeSeconds(current)
+        setProgress({ current, duration: duration || progress.duration })
+        void saveBookmark(current, duration || progress.duration, true)
+      }
+    }
+
+    setHasAppliedResume(false)
+    setSelectedQuality(quality)
   }
 
   function handleTimeUpdate(event: React.SyntheticEvent<HTMLVideoElement>) {
@@ -479,7 +499,7 @@ export default function WatchPage() {
                   {sources.map((source) => (
                     <button
                       key={source.quality}
-                      onClick={() => setSelectedQuality(source.quality)}
+                      onClick={() => handleQualityChange(source.quality)}
                       className={`rounded-lg border px-3 py-2 text-sm transition-all ${
                         selectedSource?.quality === source.quality
                           ? 'border-cx-accent bg-cx-accent text-cx-black'

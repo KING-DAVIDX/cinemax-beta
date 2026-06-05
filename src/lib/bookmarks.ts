@@ -95,13 +95,37 @@ export async function findBookmark(
   season?: number,
   episode?: number
 ) {
-  const bookmarks = await getDb()
+  const key = bookmarkKey({ movieId, season, episode })
+  const keyedBookmarks = await getDb()
     .from<StoredBookmark>(BOOKMARKS_COLLECTION)
-    .where({ userId: user.id, key: bookmarkKey({ movieId, season, episode }) })
+    .where({ userId: user.id, key })
     .limit(1)
     .select()
 
-  return bookmarks[0] || null
+  if (keyedBookmarks[0]) return keyedBookmarks[0]
+
+  const bookmarks = await getDb()
+    .from<StoredBookmark>(BOOKMARKS_COLLECTION)
+    .where({ userId: user.id, movieId: String(movieId) })
+    .select()
+
+  const normalizedSeason = season || undefined
+  const normalizedEpisode = episode || undefined
+  const legacy = bookmarks.find((bookmark) =>
+    (bookmark.season || undefined) === normalizedSeason
+    && (bookmark.episode || undefined) === normalizedEpisode
+  )
+
+  if (legacy && !legacy.key) {
+    await getDb()
+      .from<StoredBookmark>(BOOKMARKS_COLLECTION)
+      .where({ id: legacy.id, userId: user.id })
+      .update({ key })
+
+    return { ...legacy, key }
+  }
+
+  return null
 }
 
 export async function upsertBookmark(user: StoredUser, rawInput: Partial<BookmarkInput>) {
