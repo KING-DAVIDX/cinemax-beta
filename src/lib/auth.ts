@@ -5,6 +5,7 @@ import { client } from '@shellhaki/sparkdb-sdk'
 import { isAdminEmail } from '@/lib/site'
 
 export const SESSION_COOKIE = 'cinemax_session'
+export const AUTH_SERVICE_ERROR_MESSAGE = 'Account service is temporarily unavailable. Try again later.'
 const USERS_COLLECTION = 'users'
 const PBKDF2_ITERATIONS = 210000
 const PBKDF2_KEY_LENGTH = 32
@@ -47,11 +48,20 @@ function getEnv(name: string) {
   return value
 }
 
+export function isAuthServiceError(error: unknown) {
+  if (!(error instanceof Error)) return false
+
+  return (
+    error.name === 'SparkError'
+    || error.message === 'fetch failed'
+    || error.message.startsWith('SparkDB ')
+    || error.message.startsWith('SPARK_')
+    || error.message.startsWith('AUTH_')
+  )
+}
+
 export function getDb() {
-  return new client('mongodb', {
-    database_url: getEnv('SPARK_DATABASE_URL'),
-    apiKey: getEnv('SPARK_API_KEY'),
-  })
+  return new client(getEnv('SPARK_DATABASE_URL'), getEnv('SPARK_API_KEY'))
 }
 
 export function normalizeEmail(email: string) {
