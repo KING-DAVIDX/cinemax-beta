@@ -61,7 +61,10 @@ export function isAuthServiceError(error: unknown) {
 }
 
 export function getDb() {
-  return new client(getEnv('SPARK_DATABASE_URL'), getEnv('SPARK_API_KEY'))
+  return new client('mongodb', {
+    database_url: getEnv('SPARK_DATABASE_URL'),
+    apiKey: getEnv('SPARK_API_KEY'),
+  })
 }
 
 export function normalizeEmail(email: string) {
