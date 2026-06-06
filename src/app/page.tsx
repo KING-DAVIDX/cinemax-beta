@@ -5,6 +5,7 @@ import { TrendingUp, Flame, ChevronRight, Star, Play } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import MovieGrid from '@/components/MovieGrid'
 import IntroScreen from '@/components/IntroScreen'
+import SignupPrompt from '@/components/SignupPrompt'
 import { buildMovieHref, getHomepage, getTrending, type MovieItem } from '@/lib/api'
 
 export default function HomePage() {
@@ -168,6 +169,8 @@ export default function HomePage() {
           CINEMAX 2026
         </p>
       </footer>
+
+      <SignupPrompt enabled={!showIntro} />
     </div>
   )
 }
