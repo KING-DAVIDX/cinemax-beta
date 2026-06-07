@@ -48,14 +48,68 @@ html, body {
   z-index: 0;
 }
 
+.content-band {
+  position: relative;
+  border-top: 1px solid rgba(74, 64, 52, 0.34);
+  background:
+    linear-gradient(180deg, rgba(26, 24, 20, 0.58) 0%, rgba(17, 16, 9, 0) 100%),
+    radial-gradient(circle at 8% 0%, rgba(201, 168, 76, 0.07), transparent 30%);
+}
+
+.content-band + .content-band {
+  border-top-color: rgba(201, 168, 76, 0.13);
+}
+
 /* Movie card hover effect */
 .movie-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  contain: layout paint;
+  min-width: 0;
+  touch-action: manipulation;
+  transform: translateZ(0);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.movie-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
-  border-color: rgba(201, 168, 76, 0.38);
+
+.movie-card__poster {
+  transition: transform 0.32s ease;
+}
+
+.movie-card__overlay,
+.movie-card__play,
+.movie-card__accent {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.movie-card:active {
+  border-color: rgba(201, 168, 76, 0.5);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .movie-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .movie-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+    border-color: rgba(201, 168, 76, 0.38);
+  }
+
+  .movie-card:hover .movie-card__poster {
+    transform: scale(1.07);
+  }
+
+  .movie-card:hover .movie-card__overlay,
+  .movie-card:hover .movie-card__play,
+  .movie-card:hover .movie-card__accent {
+    opacity: 1;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .movie-card__overlay {
+    opacity: 0.72;
+  }
 }
 
 /* Glow text */
@@ -100,12 +154,24 @@ html, body {
 }
 
 /* Focus styles */
-input:focus, button:focus {
+input:focus, button:focus, select:focus {
   outline: none;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(201, 168, 76, 0.72);
+  outline-offset: 3px;
 }
 
 button, a, input, select {
   -webkit-tap-highlight-color: transparent;
+}
+
+button, a, select, input {
+  touch-action: manipulation;
 }
 
 .editorial-label {

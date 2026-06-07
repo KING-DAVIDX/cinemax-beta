@@ -42,12 +42,11 @@ export default function SignupPrompt({ enabled }: { enabled: boolean }) {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[80] flex justify-center px-4 pb-4 sm:bottom-5 sm:pb-0">
       <div
         role="dialog"
-        aria-modal="true"
         aria-labelledby="signup-prompt-title"
-        className="relative w-full max-w-lg overflow-hidden rounded-lg border border-cx-muted/55 bg-cx-dark shadow-2xl shadow-black/60 animate-fade-up"
+        className="pointer-events-auto relative w-full max-w-lg overflow-hidden rounded-lg border border-cx-muted/55 bg-cx-dark shadow-2xl shadow-black/60 animate-fade-up"
       >
         <div className="absolute inset-x-0 top-0 h-1 bg-cx-accent" />
         <button

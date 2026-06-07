@@ -114,52 +114,58 @@ export default function HomePage() {
       </section>
 
       {/* TRENDING */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Flame size={20} className="text-cx-accent" />
-            <h2 className="font-display text-xl text-white sm:text-2xl">Trending Now</h2>
+      <section className="content-band py-9 sm:py-11">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <Flame size={20} className="shrink-0 text-cx-accent" />
+              <h2 className="break-words font-display text-xl text-white sm:text-2xl">Trending Now</h2>
+            </div>
+            <Link
+              href="/trending"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-cx-accent transition-colors hover:text-cx-ice"
+            >
+              See all <ChevronRight size={15} />
+            </Link>
           </div>
-          <Link
-            href="/trending"
-            className="flex items-center gap-1 text-cx-accent text-sm font-body hover:text-cx-ice transition-colors"
-          >
-            See all <ChevronRight size={15} />
-          </Link>
+          <MovieGrid
+            movies={trending.slice(0, 12)}
+            loading={loading}
+            emptyMessage="Couldn't load trending content."
+            skeletonCount={12}
+          />
         </div>
-        <MovieGrid
-          movies={trending.slice(0, 12)}
-          loading={loading}
-          emptyMessage="Couldn't load trending content."
-          skeletonCount={12}
-        />
       </section>
 
       {/* HOMEPAGE SECTIONS — render each named section separately */}
       {!loading && sections.map((section, i) => (
-        <section key={i} className="max-w-7xl mx-auto px-4 py-6">
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="break-words font-display text-xl text-white sm:text-2xl">
-                {section.title}
-              </h2>
+        <section key={i} className="content-band py-8 sm:py-10">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <TrendingUp size={20} className="shrink-0 text-cx-accent" />
+                <h2 className="break-words font-display text-xl text-white sm:text-2xl">
+                  {section.title}
+                </h2>
+              </div>
             </div>
+            <MovieGrid movies={section.items.slice(0, 18)} emptyMessage="No content." />
           </div>
-          <MovieGrid movies={section.items.slice(0, 18)} emptyMessage="No content." />
         </section>
       ))}
 
       {/* Fallback FEATURED block — shown if sections is empty but allHomeMovies has data */}
       {!loading && sections.length === 0 && allHomeMovies.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-6 pb-16">
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={20} className="text-cx-accent" />
-              <h2 className="font-display text-xl text-white sm:text-2xl">Featured</h2>
+        <section className="content-band py-8 pb-16 sm:py-10">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={20} className="shrink-0 text-cx-accent" />
+                <h2 className="font-display text-xl text-white sm:text-2xl">Featured</h2>
+              </div>
             </div>
+            <MovieGrid movies={allHomeMovies.slice(0, 18)} emptyMessage="No featured content." />
           </div>
-          <MovieGrid movies={allHomeMovies.slice(0, 18)} emptyMessage="No featured content." />
         </section>
       )}
 
