@@ -12,6 +12,7 @@
     "@shellhaki/sparkdb-sdk": "^1.0.1",
     "@vercel/analytics": "^2.0.1",
     "lucide-react": "^0.383.0",
+    "mongoose": "^8.5.1",
     "next": "latest",
     "nodemailer": "^8.0.10",
     "react": "^18",

@@ -1,8 +1,10 @@
 import crypto from 'crypto'
 import { cookies } from 'next/headers'
 import type { NextResponse } from 'next/server'
-import { client } from '@shellhaki/sparkdb-sdk'
+import { getDb, isSparkDbError } from '@/lib/db'
 import { isAdminEmail } from '@/lib/site'
+
+export { getDb }
 
 export const SESSION_COOKIE = 'cinemax_session'
 export const AUTH_SERVICE_ERROR_MESSAGE = 'Account service is temporarily unavailable. Try again later.'
@@ -51,20 +53,9 @@ function getEnv(name: string) {
 export function isAuthServiceError(error: unknown) {
   if (!(error instanceof Error)) return false
 
-  return (
-    error.name === 'SparkError'
-    || error.message === 'fetch failed'
-    || error.message.startsWith('SparkDB ')
-    || error.message.startsWith('SPARK_')
-    || error.message.startsWith('AUTH_')
-  )
-}
-
-export function getDb() {
-  return new client('mongodb', {
-    database_url: getEnv('SPARK_DATABASE_URL'),
-    apiKey: getEnv('SPARK_API_KEY'),
-  })
+  // Only true after BOTH SparkDB and the Mongoose fallback have failed, since
+  // getDb() now retries against MongoDB transparently before propagating.
+  return isSparkDbError(error) || error.message.startsWith('AUTH_')
 }
 
 export function normalizeEmail(email: string) {

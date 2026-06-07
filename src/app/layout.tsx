@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import WhatsappReminder from '@/components/WhatsappReminder'
 import './globals.css'
 
 const siteUrl = (
@@ -59,6 +60,7 @@ export default function RootLayout({
       </head>
       <body className="noise-bg">
         {children}
+        <WhatsappReminder />
         <Analytics />
       </body>
     </html>
