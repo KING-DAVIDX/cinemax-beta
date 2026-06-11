@@ -1,4 +1,4 @@
-import { client as SparkClient } from '@shellhaki/sparkdb-sdk'
+import { MongoDBClient } from '@shellhaki/sparkdb-sdk'
 import mongoose, { Schema, type Model } from 'mongoose'
 
 /**
@@ -18,10 +18,10 @@ function getEnv(name: string) {
   return value
 }
 
-// SparkDB connection string doubles as the MongoDB URI (same database).
 function getMongoUri() {
   return (
-    process.env.MONGODB_URI
+    process.env.MONGO_URL
+    || process.env.MONGODB_URI
     || process.env.MONGODB_URL
     || getEnv('SPARK_DATABASE_URL')
   )
@@ -104,7 +104,7 @@ function stripMongoMeta<T>(doc: Record<string, unknown>): T {
 
 class FallbackTable<T extends object> {
   constructor(
-    private readonly spark: SparkClient,
+    private readonly spark: MongoDBClient,
     private readonly table: string,
     private readonly filters: Partial<T> = {},
     private readonly rowLimit?: number
@@ -118,16 +118,11 @@ class FallbackTable<T extends object> {
     return new FallbackTable<T>(this.spark, this.table, this.filters, limit)
   }
 
-  private sparkTable() {
-    let table = this.spark.from<T>(this.table)
-    if (Object.keys(this.filters).length) table = table.where(this.filters)
-    if (typeof this.rowLimit === 'number') table = table.limit(this.rowLimit)
-    return table
-  }
-
   async select(): Promise<T[]> {
     try {
-      return await this.sparkTable().select()
+      return await this.spark
+        .collection<T>(this.table)
+        .find(this.filters as Record<string, unknown>, { limit: this.rowLimit })
     } catch (error) {
       if (!isSparkDbError(error)) throw error
       console.error('[db] SparkDB select failed, falling back to MongoDB:', error)
@@ -142,7 +137,9 @@ class FallbackTable<T extends object> {
 
   async insert(values: Partial<T>) {
     try {
-      return await this.sparkTable().insert(values)
+      return await this.spark
+        .collection<T>(this.table)
+        .insertOne(values as Partial<T> & Record<string, unknown>)
     } catch (error) {
       if (!isSparkDbError(error)) throw error
       console.error('[db] SparkDB insert failed, falling back to MongoDB:', error)
@@ -155,7 +152,12 @@ class FallbackTable<T extends object> {
 
   async update(values: Partial<T>) {
     try {
-      return await this.sparkTable().update(values)
+      return await this.spark
+        .collection<T>(this.table)
+        .updateMany(
+          this.filters as Record<string, unknown>,
+          values as Partial<T> & Record<string, unknown>
+        )
     } catch (error) {
       if (!isSparkDbError(error)) throw error
       console.error('[db] SparkDB update failed, falling back to MongoDB:', error)
@@ -171,7 +173,9 @@ class FallbackTable<T extends object> {
 
   async delete() {
     try {
-      return await this.sparkTable().delete()
+      return await this.spark
+        .collection<T>(this.table)
+        .deleteMany(this.filters as Record<string, unknown>)
     } catch (error) {
       if (!isSparkDbError(error)) throw error
       console.error('[db] SparkDB delete failed, falling back to MongoDB:', error)
@@ -194,11 +198,11 @@ function fallbackResult(rowsAffected: number) {
 }
 
 export class FallbackDb {
-  private readonly spark: SparkClient
+  private readonly spark: MongoDBClient
 
   constructor() {
-    this.spark = new SparkClient('mongodb', {
-      database_url: getEnv('SPARK_DATABASE_URL'),
+    this.spark = new MongoDBClient({
+      database_url: getMongoUri(),
       apiKey: getEnv('SPARK_API_KEY'),
     })
   }
